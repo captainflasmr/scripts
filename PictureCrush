@@ -1,0 +1,13 @@
+#! /bin/bash
+source Common.sh
+for A in $FILES; do
+    pre
+    # book thumbs
+    convert "$A" -auto-orient -strip -quality 50% -resize '64x>' -resize 'x64>' "$A"
+    # video thumbs
+    # convert_it "$A" -auto-orient -strip -quality 50% -resize '400x>' -resize 'x400>' "$A"
+    # standard
+    # convert_it "$A" -auto-orient -strip -quality 50% -resize '2048x>' -resize 'x2048>' "$A"
+    # other
+    # convert_it "$A" -auto-orient -strip -quality 50% -resize '800x>' -resize 'x800>' "$A"
+done

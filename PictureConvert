@@ -1,0 +1,10 @@
+#! /bin/bash
+source Common.sh
+for A in $FILES; do
+    pre
+    EXT=jpg
+    NEWFILE="${BASEDIR}/${FILE_NO_EXT}.${EXT}"
+    # echo ":: $NEWFILE"
+    # convert_it "$A" -auto-orient -strip -quality 50% $NEWFILE
+    convert_it "$A" -auto-orient -strip $NEWFILE
+done
