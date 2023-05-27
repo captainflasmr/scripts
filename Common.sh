@@ -66,7 +66,7 @@ function convert_it () {
     convert "$FIRST" $ARGS "$TMP.$EXT"
     exiftool -overwrite_original_in_place -TagsFromFile "$FIRST" "$TMP.$EXT"
     touch -r "$FIRST" "$TMP.$EXT"
-    trash-put "$FIRST"
+    # trash-put "$FIRST"
     cp -f --preserve "$TMP.$EXT" "$LAST"
 }
 
