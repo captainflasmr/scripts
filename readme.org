@@ -1,0 +1,62 @@
+#+title: scripts readme
+#+options: toc: nil
+
+Various scripts I keep in my bin folder
+
+#+begin_src bash
+  AudioConvert
+AudioInfo
+AudioNormalise
+AudioTrimSilence
+Common.sh
+ConvertNoSpace
+OtherTagDate
+Picture2pdf
+PictureAutoColour
+PictureConvert
+PictureCorrect
+PictureCrush
+PictureGetText
+PictureInfo
+PictureMontage
+PictureOrganise
+PictureOrientation
+PictureRotateFlip
+PictureRotateLeft
+PictureRotateRight
+PictureScale
+PictureUpscale
+README.md
+ServiceConsole
+StegHide
+VideoConcat
+VideoConvert
+VideoCut
+VideoDouble
+VideoExtractAudio
+VideoExtractFrames
+VideoFilter
+VideoFromFrames
+VideoInfo
+VideoRemoveAudio
+VideoReplaceAudio
+VideoReplaceVideoAudio
+VideoRescale
+VideoReverse
+VideoRotate
+VideoRotateLeft
+VideoRotateRight
+VideoShrink
+VideoSlowDown
+VideoSpeedUp
+VideoZoom
+img
+music_cover_art.sh
+permissions-git.sh
+permissions-key.sh
+screen-record.sh
+startup.sh
+startup_numpad.sh
+startup_root.sh
+startup_root_restart.sh
+#+end_src
