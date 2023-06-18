@@ -4,7 +4,7 @@
 Various scripts I keep in my bin folder
 
 #+begin_src bash
-  AudioConvert
+AudioConvert
 AudioInfo
 AudioNormalise
 AudioTrimSilence
