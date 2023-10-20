@@ -1,0 +1,3 @@
+#! /bin/bash
+source Common.sh
+montage -tile 4x4 -mode Concatenate -gravity NorthWest -alpha off -background darkgrey -monitor "$@" montage.jpg

@@ -1,0 +1,9 @@
+#!/bin/bash
+source Common.sh
+for A in $FILES; do
+   pre
+   EXT=mp4
+   NEWFILE="${BASEDIR}/${FILE_NO_EXT}.${EXT}"
+   # convert_it_video "$A" -vf "scale=iw/2:ih/2" -threads 4 -vcodec libx264 -crf 30 -filter:v fps=fps=20 $NEWFILE
+   convert_it_video "$A" -vf "scale=iw/2:ih/2" -threads 4 -vcodec libx264 -crf 28 $NEWFILE
+done

@@ -1,0 +1,11 @@
+#! /bin/bash
+source Common.sh
+
+for A in $FILES; do
+   pre
+   echo "$A"
+   cp -f --preserve "$A" "$TMP"
+   GIMPCMD="gimp -i -b '(batch-gimp \"$A\" 5.0 1.0 0)' -b '(gimp-quit 0)'"
+   eval $GIMPCMD
+   rm -f "$TMP"
+done

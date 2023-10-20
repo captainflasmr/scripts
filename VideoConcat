@@ -1,0 +1,22 @@
+#! /bin/bash
+source Common.sh
+
+MYLIST=$(mktemp)
+MYLISTSORTED=$(mktemp)
+
+echo $MYLIST
+echo $MYLISTSORTED
+
+for A in $FILES; do
+   echo "###### : $A"
+   pre
+   echo file \'$A\' >> $MYLIST
+done
+
+sort $MYLIST > $MYLISTSORTED
+
+ffmpeg -hide_banner -loglevel panic -stats \
+       -f concat -safe 0 -i $MYLISTSORTED -c copy "${BASEDIR}/concat-$MYDATE.mp4"
+
+rm $MYLIST
+rm $MYLISTSORTED

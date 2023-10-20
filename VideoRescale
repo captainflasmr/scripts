@@ -1,0 +1,7 @@
+#!/bin/bash
+source Common.sh
+for A in $FILES; do
+   pre
+   NEWFILE="${BASEDIR}/${FILE_NO_EXT}.mp4"
+   convert_it_video "$A" -vf "scale=1800x1080" -threads 2 -vcodec libx264 -crf 23 $NEWFILE
+done

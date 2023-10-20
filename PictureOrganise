@@ -1,0 +1,42 @@
+#! /bin/bash
+
+source Common.sh
+
+for A in $FILES; do
+   pre
+
+   #    exiftool -P -o . "-Directory<FileModifyDate" "-Directory<DateTimeOriginal" -d %Y%m -r "$A"
+   CREATEDATE=$(exiftool -TAG -CreateDate "$A")
+   # if exif info exists then use it!
+   if [[ ! -z $CREATEDATE ]]; then
+      YEAR=$(echo $CREATEDATE | awk -F ':' '{print $2}' | sed 's/ //g')
+      MONTH=$(echo $CREATEDATE | awk -F ':' '{print $3}' | sed 's/ //g')
+   fi
+   DEST="$BASEDIR/${YEAR}${MONTH}"
+   echo $A $BASEDIR $YEAR $MONTH $DEST
+
+   if [[ $YEAR != "0000" ]]; then
+      mkdir -p "$DEST"
+      mv "$A" "$DEST"
+   fi
+done
+
+# FILES=$(find . -type f -name "*" -printf '%p;' | sort)
+
+# export IFS=";"
+
+# # now try and pair up sidecar files
+# for A in $FILES; do
+#     pre
+# #    echo $A $FILE
+#     NEWS=${FILE//[/\\[}
+#     NEWS=${NEWS//]/\\]}
+
+#     FIND=$(find . -name "${NEWS}.xmp")
+# #    echo $FIND
+#     if [[ ! -z $FIND ]]; then
+# 	DEST=${FIND%/*}
+# 	echo "$A -> $DEST"
+# 	mv "$A" "$DEST"
+#     fi
+# done

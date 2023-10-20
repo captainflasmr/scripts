@@ -1,0 +1,16 @@
+#!/bin/bash
+source Common.sh
+for A in $FILES; do
+   pre
+   NEWFILE="${BASEDIR}/${FILE_NO_EXT}-filter.mp4"
+
+   #    ffmpeg -hide_banner -loglevel panic -stats \
+      #-y -i "$A" -filter_complex "[0:v]negate[av]" -map [av] -c:a copy $NEWFILE
+
+   # reverse video and audio
+   #    ffmpeg -hide_banner -loglevel panic -stats \
+      #-y -i "$A" -threads 2 -vf reverse -af areverse $NEWFILE
+
+   # change framerate
+   convert_it_video "$A" -threads 4 -filter:v fps=fps=15 $NEWFILE
+done

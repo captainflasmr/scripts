@@ -1,0 +1,28 @@
+#!/bin/bash
+source Common.sh
+for A in $FILES; do
+   pre
+   #    ffmpeg_sox_reverse.sh -i "$A" -o "${BASE}Reverse.mp4"
+
+   mkdir -p $BASEDIR/tmp
+
+   # segment file
+   ffmpeg -i "$A" -map 0 -c copy -f segment -segment_time 120 "$BASEDIR/tmp/output_%03d.mp4"
+
+   for R in $BASEDIR/tmp/*; do
+      RBASE=${R%.*}
+      OUT="${RBASE}_r.mp4"
+      echo file \'$OUT\' >> mylist.txt
+      printf "Doing $R -> $OUT\n"
+      ffmpeg -i "$R" -vf reverse -af areverse "$OUT"
+   done
+
+   sort -r mylist.txt > mylistsorted.txt
+   NEWFILE="${BASEDIR}/${FILE_NO_EXT}-reverse.mp4"
+   ffmpeg -hide_banner -loglevel panic -stats \
+          -threads 2 -f concat -safe 0 -i mylistsorted.txt -c copy $NEWFILE
+
+   rm -f mylist.txt
+   rm -f mylistsorted.txt
+   rm -fr $BASEDIR/tmp
+done

@@ -1,0 +1,10 @@
+#! /bin/bash
+source Common.sh
+for A in $FILES; do
+   pre
+   get_trunc_name
+   if [[ "$A" != "$TRUNCNAME" ]]; then
+      echo "$A -> $TRUNCNAME"
+      mv "$A" "$TRUNCNAME"
+   fi
+done

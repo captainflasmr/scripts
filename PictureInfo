@@ -1,0 +1,5 @@
+#! /bin/bash
+source Common.sh
+for A in $FILES; do
+   exiftool -g "$A"
+done

@@ -1,0 +1,289 @@
+#!/bin/bash
+FILTERSTR='\.[df]\.\.t\.\.\.\.\.\.'
+BACKUPDIR="$HOME/.Trash-rsync/$(date +%Y%m%d)"
+BASE="/run/media/jdyer"
+INC_FILE="$HOME/bin/do_backup_incl"
+
+IFS=,
+
+function list_filters ()
+{
+   echo "dryrun   : $DRY"
+   echo "included : $INC"
+   echo "trash    : $TRASH"
+   echo "sanity   : $SANITY"
+   echo "excluded : $EXCL"
+}
+
+function select_dir ()
+{
+   select DIR in "$BASE"/*;
+   do
+      case $DIR in
+         *)
+            break
+            ;;
+      esac
+   done
+}
+
+function tidy_up ()
+{
+   TYPES="webp,jpg,jpeg,png,mp4,pdf"
+   DIRS="DCIM/Screenshots,DCIM/Camera,Snapseed"
+
+   for DIR in $DIRS; do
+      cd "$HOME/$DIR" || exit
+
+      if [[ ! -f DATE ]]; then
+         touch --date "1976-04-03" DATE
+      fi
+
+      for TYPE in $TYPES; do
+         FILES=$(find "$HOME/$DIR" -iname "*.$TYPE" -newer DATE -printf '%p;')
+         if [[ -n $FILES ]]; then
+            source Common.sh "$FILES"
+            for A in $FILES; do
+               echo "$A"
+               pre
+               if [[ $TYPE != "mp4" ]]; then
+                  EXT=jpg
+                  get_trunc_name
+                  exiftool -orientation#=1 -overwrite_original_in_place "-FileModifyDate<DateTimeOriginal" "-FileModifyDate<CreateDate" "$A"
+                  convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
+               fi
+            done
+         fi
+      done
+      touch DATE
+   done
+}
+
+
+function do_input ()
+{
+   echo "SOURCE"
+   select_dir
+   SRC=$DIR
+
+   echo "DESTINATION"
+   select_dir
+   DST=$DIR
+
+   echo "======================================================================"
+   echo "DOING ${SRC}/ -> ${DST}/"
+   list_filters
+   echo "======================================================================"
+   echo "Continue? (any key)"
+   read -re
+   do_it
+}
+
+function do_it ()
+{
+   RSYNC="rsync -rltsiP --copy-links --delete --size-only --modify-window=4 \
+    --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*' \
+    --filter=':- .gitignore' \
+     --exclude-from=\"$HOME/bin/do_backup_excl\" "
+
+   if [[ ! -d "$SRC" ]]; then
+      echo
+      echo "WARNING! $SRC NOT FOUND"
+      echo
+      exit
+   fi
+
+   if [[ ! -d "$DST" ]]; then
+      echo
+      echo "WARNING! $DST NOT FOUND"
+      echo
+      exit
+   fi
+
+   if [[ $DRY == 1 ]]; then
+      RSYNC+=" --dry-run "
+   fi
+
+   if [[ $EXCL == 1 ]]; then
+      RSYNC+=" --delete-excluded "
+   fi
+
+   if [[ $INC == 1 ]]; then
+      RSYNC+=" --files-from=\"${INC_FILE}\" "
+   fi
+
+   if [[ $TRASH == 1 ]]; then
+      RSYNC+="--backup-dir=\"${BACKUPDIR}\" "
+   fi
+
+   RSYNC+=" \"${SRC}/\" \"${DST}/\" | grep -v \"${FILTERSTR}\""
+
+   list_filters
+   echo "$RSYNC"
+   eval "$RSYNC"
+
+   if [[ $SANITY == 1 ]]; then
+      echo "Sanity Check $SRC -> $DST ...."
+      S1=$(mktemp)
+      S2=$(mktemp)
+      cd "$SRC" || exit
+      ls -R --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S1"
+      cd "$DST" || exit
+      ls -R --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S2"
+      diff --side-by-side --suppress-common-lines "$S1" "$S2"
+      rm -f "$S1"
+      rm -f "$S2"
+   fi
+
+   echo
+   echo "Finished"
+   echo
+}
+
+function backup_home ()
+{
+   DRY=0
+   INC=1
+   TRASH=0
+   SANITY=0
+   EXCL=1
+
+   # backup maildir need to tar as handling of colon not great
+   DATE=$(date +%Y%m%d)
+   MONTH=$(date +%d)
+   MAIL_FILE=$HOME/MAIL
+   cd $HOME
+   if [[ $MONTH = "07" || $MONTH = "14" || $MONTH = "21" || $MONTH = "28" ]]; then
+      if [[ ! -f $MAIL_FILE ]]; then
+         echo
+         echo "---------- Updating Maildir ----------"
+         echo
+         mbsync -a
+   #       echo "---------- Doing Maildir ----------"
+   #       tar zcf Maildir.tar.gz Maildir
+   #       echo "---------- Done Maildir ----------"
+         touch $MAIL_FILE
+      fi
+   else
+      rm -f $MAIL_FILE
+   fi
+
+   # backup other things
+   ARC_FILE=$HOME/ARCHIVE
+   if [[ $MONTH = "11" ]]; then
+      if [[ ! -f $ARC_FILE ]]; then
+         TARGET=~/nas/Archive/Documents/"$DATE"
+         mkdir -p $TARGET
+         rsync -avP ~/DCIM/content/RedSaucers.kdbx \
+               $TARGET/"$DATE"--RedSaucers.kdbx
+         rsync -avP ~/DCIM/Volume \
+               $TARGET/"$DATE"--Volume
+         # rsync -avP ~/Maildir.tar.gz \
+               # $TARGET/"$DATE"--Maildir.tar.gz
+         rsync -avP ~/DCIM/Backup/Contacts.vcf \
+               $TARGET/"$DATE"--Contacts.vcf
+         touch $ARC_FILE
+      fi
+   else
+      rm -f $ARC_FILE
+   fi
+   tidy_up
+   # SRC="$HOME"
+   # DST="$HOME/DCIM/Linux"
+   # INC_FILE="$HOME/bin/do_backup_incl_local"
+   # do_it
+   SRC="$HOME"
+   DST="$HOME/nas/Home"
+   INC_FILE="$HOME/bin/do_backup_incl"
+   do_it
+}
+
+cd "$HOME/nas" || exit
+
+if [[ -n $@ ]]; then
+   backup_home
+   exit
+fi
+
+select PRESET in home usb-home ventoy disks $BASE/*;
+do
+   case $PRESET in
+      home)
+         backup_home
+         break
+         ;;
+      usb-home)
+         select QUICK in $BASE/*;
+         do
+            case QUICK in
+               *)
+                  DRY=0
+                  INC=1
+                  TRASH=0
+                  SANITY=0
+                  EXCL=1
+                  SRC="$HOME"
+                  DST="$QUICK/Home"
+                  do_it
+                  exit
+                  ;;
+            esac
+         done
+         ;;
+      ventoy)
+         RSYNC="rsync -rltsiP --copy-links --delete --size-only --modify-window=4 \
+    --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*' --exclude 'Photos' --exclude 'Maildir' \
+     --exclude 'Volume' --exclude 'Videos' --exclude 'KritaRecorder' --exclude 'Reference' --exclude 'music' \
+    --filter=':- .gitignore' \
+     --exclude-from=\"$HOME/bin/do_backup_excl\" "
+
+         SRC="$HOME"
+         DST="$BASE/Ventoy/Home"
+
+         RSYNC+=" --files-from=\"${INC_FILE}\" "
+         RSYNC+=" --delete-excluded "
+
+         RSYNC+=" \"${SRC}/\" \"${DST}/\" | grep -v \"${FILTERSTR}\""
+
+         echo "$RSYNC"
+         eval "$RSYNC"
+         exit
+         ;;
+      disks)
+         DRY=0
+         INC=0
+         TRASH=0
+         SANITY=1
+         EXCL=1
+         do_input
+         break
+         ;;
+      *)
+         DRY=0
+         INC=0
+         TRASH=0
+         SANITY=1
+         EXCL=1
+         SRC="$HOME/nas"
+         DST="$PRESET"
+         if [[ ! -d "$SRC/Home" ]]; then
+            echo
+            echo "WARNING! $SRC/Home NOT FOUND"
+            echo
+            exit
+         fi
+         if [[ ! -d "$DST/Home" ]]; then
+            echo
+            echo "WARNING! $DST/Home NOT FOUND"
+            echo
+            exit
+         fi
+         do_it
+         break
+         ;;
+   esac
+done
+
+echo
+echo "Finished"
+echo

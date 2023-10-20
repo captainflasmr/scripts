@@ -1,0 +1,7 @@
+#!/bin/bash
+source Common.sh
+for A in $FILES; do
+   pre
+   mkdir -p "$BASEDIR/frames"
+   ffmpeg -y -i "$A" -vf fps=10 "$BASEDIR/frames/%07d.jpg" -hide_banner
+done

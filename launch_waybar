@@ -1,0 +1,10 @@
+#!/bin/bash
+
+CONFIG_FILES="$HOME/.config/waybar/config $HOME/.config/waybar/style.css $HOME/.config/waybar/modules.json"
+
+while true; do
+   waybar &
+   inotifywait -e attrib,create,modify $CONFIG_FILES
+   # killall -SIGUSR2 waybar
+   killall waybar
+done

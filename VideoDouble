@@ -1,0 +1,16 @@
+#!/bin/bash
+source Common.sh
+for A in $FILES; do
+   pre
+   echo file \'$A\' >> mylist.txt
+   echo file \'$A\' >> mylist.txt
+done
+
+sort mylist.txt > mylistsorted.txt
+
+NEWFILE="${BASEDIR}/${FILE_NO_EXT}-double.mp4"
+ffmpeg -hide_banner -loglevel panic -stats \
+       -f concat -safe 0 -i mylistsorted.txt -c copy $NEWFILE
+
+rm mylist.txt
+rm mylistsorted.txt

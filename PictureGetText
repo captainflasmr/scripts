@@ -1,0 +1,6 @@
+#! /bin/bash
+source Common.sh
+for A in $FILES; do
+   pre
+   convert_it_text "$A" -l eng "$FILE_NO_EXT"
+done

@@ -1,0 +1,65 @@
+#!/bin/bash
+source Common.sh
+
+set -e
+clean_up () {
+   echo "> clean_up"
+   rm -f concatlist.txt
+   rm -f fadedmusic.mp3
+   rm -f music_list.txt
+   exit
+}
+trap clean_up EXIT
+
+# ls $SRC/*.mp3 > music_list.txt
+ls ~/DCIM/Art/Youtube/YoutubeMusic/*.mp3 > music_list.txt
+
+for number in {1..5}; do
+   for A in $FILES; do
+      # get the length of the video file in seconds
+      LEN=$(ffprobe -v quiet -of csv=p=0 -show_entries format=duration "$A")
+
+      # take any floating point off
+      LEN=${LEN%.*}
+
+      pre
+      printf "\nDoing BASEFILE : $BASEFILE : $BASE : $A length $LEN\n"
+
+      CURR_LEN=0
+
+      #	read -p ".."
+
+      while [ $CURR_LEN -le $LEN ]; do
+         # music list created by find . -name *.mp3
+         MUSIC=$(shuf -n 1 music_list.txt)
+         MLEN=$(ffprobe -v quiet -of csv=p=0 -show_entries format=duration "$MUSIC")
+
+         if [[ $MLEN != "" ]]; then
+            MLEN=${MLEN%.*}
+            #	    printf "\n##$MLEN : ##$MUSIC##\n"
+            # build the concat file list for ffmpeg
+            printf "file \'$MUSIC\'\n" >> concatlist.txt
+            CURR_LEN=$(( CURR_LEN + MLEN ))
+            printf "\n$MUSIC\n"
+            printf "\ncurr_len : $CURR_LEN\n"
+         fi
+      done
+
+      # now fade out ending variables
+      fdur=5
+      LESSEND=$(( LEN - fdur ))
+      durstr="afade=t=out:st=$LESSEND:d=$fdur"
+
+      printf "\n$durstr\n"
+
+      # create new video audio track
+      ffmpeg -hide_banner -loglevel panic -stats -f concat -safe 0 -i concatlist.txt -c copy -f mp3 pipe:1 | ffmpeg -y -ss 00:00:00 -i pipe:0 -t $LEN -c copy -f mp3 pipe:1 | ffmpeg -i pipe:0 -af $durstr fadedmusic.mp3
+      NEWFILE="${BASEDIR}/TimeLapse_${FILE_NO_EXT}-$number.mp4"
+      # ffmpeg -hide_banner -loglevel panic -stats -y -i "$A" -i fadedmusic.mp3 -map 0:v -map 1:a -codec copy "${BASEDIR}/TimeLapse${BASEFILE}-$number.mp4"
+      ffmpeg -hide_banner -loglevel panic -stats -y -i "$A" -i fadedmusic.mp3 -map 0:v -map 1:a -codec copy $NEWFILE
+
+      # clean up
+      rm -f concatlist.txt
+      rm -f fadedmusic.mp3
+   done
+done

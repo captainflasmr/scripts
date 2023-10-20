@@ -1,0 +1,6 @@
+#!/bin/bash
+# Merge image files into a video
+NEWFILE="$HOME/Videos/out.mp4"
+ffmpeg -hide_banner -loglevel panic -stats \
+       -y -start_number 0 -i "Proj3_img%8d.jpg" \
+       -c:v libx264 -vf "fps=25,format=yuv420p" $NEWFILE

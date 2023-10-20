@@ -1,0 +1,10 @@
+#!/bin/bash
+source Common.sh
+for A in $FILES; do
+   pre
+   EXT=mp4
+   # 2 = 90CounterClockwise
+   # NEWFILE="${BASEDIR}/${FILE_NO_EXT}-rot-l-${MYDATE}.mp4"
+   NEWFILE="${BASEDIR}/${FILE_NO_EXT}.mp4"
+   convert_it_video "$A" -threads 2 -vf "transpose=2" $NEWFILE
+done

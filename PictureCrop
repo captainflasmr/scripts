@@ -1,0 +1,9 @@
+#! /bin/bash
+# intelligently resize to center gravity
+source Common.sh
+for A in $FILES; do
+   pre
+   # convert_it "$A" -resize 300x100^ -gravity center -extent 300x100 "$A"
+   # advent calendar size
+   convert_it "$A" -resize 600x420^ -gravity center -extent 600x420 "$A"
+done

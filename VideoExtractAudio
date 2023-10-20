@@ -1,0 +1,8 @@
+#!/bin/bash
+source Common.sh
+
+for A in $FILES; do
+   pre
+   NEWFILE="${BASEDIR}/${FILE_NO_EXT}-${MYDATE}.wav"
+   convert_it_video "$A" -vn -q:a 0 -map a $NEWFILE
+done

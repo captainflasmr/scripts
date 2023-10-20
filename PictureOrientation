@@ -1,0 +1,10 @@
+#! /bin/bash
+# clear picture orientation
+source Common.sh
+for A in $FILES; do
+   pre
+   # convert_it "$A" -auto-orient -strip -orient Undefined "$A"
+   # Orientation                     : Horizontal (normal)
+   exiftool -orientation#=1 "$A"
+   convert_it "$A" -auto-orient -strip "$A"
+done

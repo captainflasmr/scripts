@@ -1,0 +1,8 @@
+#!/bin/bash
+source Common.sh
+for A in $FILES; do
+   pre
+   EXT=mp4
+   NEWFILE="${BASEDIR}/${FILE_NO_EXT}.${EXT}"
+   convert_it_video "$A" -c:a aac -c:v libx264 -crf 23 $NEWFILE
+done

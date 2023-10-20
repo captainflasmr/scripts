@@ -1,0 +1,11 @@
+#!/bin/bash
+
+CONFIG_FILES="$HOME/.config/polybar/config.ini $HOME/.config/polybar/modules.ini $HOME/.config/polybar/fonts.ini $HOME/.config/polybar/colors.ini"
+
+polybar &
+
+while true; do
+   inotifywait -e attrib,create,modify $CONFIG_FILES
+   polybar-msg cmd restart
+   # killall polybar
+done

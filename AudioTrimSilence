@@ -1,0 +1,10 @@
+#!/bin/bash
+source Common.sh
+
+for A in $FILES; do
+   pre
+   EXT="mp3"
+   NEWFILE="${BASEDIR}/${FILE_NO_EXT}-trim.$EXT"
+   ffmpeg -hide_banner -loglevel panic -stats \
+          -y -i "$A" -af "silenceremove=start_periods=1:start_duration=1:start_threshold=-60dB:detection=peak,aformat=dblp,areverse,silenceremove=start_periods=1:start_duration=1:start_threshold=-60dB:detection=peak,aformat=dblp,areverse" $NEWFILE
+done

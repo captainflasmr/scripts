@@ -1,0 +1,9 @@
+#! /bin/bash
+source Common.sh
+for A in $FILES; do
+   pre
+   EXT=jpg
+   get_trunc_name
+   exiftool -all= -orientation#=1 -overwrite_original_in_place "-FileModifyDate<DateTimeOriginal" "-FileModifyDate<CreateDate" "$A"
+   convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
+done
