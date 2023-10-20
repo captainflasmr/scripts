@@ -4,6 +4,7 @@ cd $HOME/repos
 
 git clone https://github.com/captainflasmr/dotfiles
 git clone https://github.com/captainflasmr/fd-find
+git clone https://github.com/captainflasmr/scripts
 
 git clone https://github.com/tkurtbond/old-ada-mode
 
