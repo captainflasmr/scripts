@@ -5,7 +5,7 @@ echo "----------------------------------------"
 echo "system update"
 echo "----------------------------------------"
 echo
-sudo pacman -Syu
+sudo pacman -Syu --noconfirm
 echo
 echo "----------------------------------------"
 echo "flatpak update"
