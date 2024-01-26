@@ -1,0 +1,13 @@
+#! /bin/bash
+
+source Common.sh
+
+DATE=$(date +%Y%m%d%H%M%S)
+
+for A in $FILES; do
+   pre
+   DIR="$FILE_NO_EXT-pdf-export"
+   mkdir -p $DIR
+   pdftoppm -r 300 -jpeg "$A" "$DIR/$FILE_NO_EXT"
+   # convert -density 300 "$A" -quality 100 "$DIR/$FILE_NO_EXT-%03d.jpg"
+done
