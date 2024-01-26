@@ -5,3 +5,4 @@ latte-dock-git
 power-profiles-daemon
 xero-fix-scripts
 yakuake
+#pamac-aur
