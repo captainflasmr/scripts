@@ -5,9 +5,6 @@ echo "----------------------------------------"
 echo "system update"
 echo "----------------------------------------"
 echo
-<<<<<<< Updated upstream
-sudo pacman -Syu --noconfirm
-=======
 if command -v garuda-update &> /dev/null ; then
    echo "----------------------------------------"
    echo "garuda-update"
@@ -16,7 +13,6 @@ if command -v garuda-update &> /dev/null ; then
 else
    sudo pacman -Syu --noconfirm
 fi
->>>>>>> Stashed changes
 echo
 echo "----------------------------------------"
 echo "flatpak update"
