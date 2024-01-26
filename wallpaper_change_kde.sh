@@ -1,2 +1,2 @@
 #!/bin/bash
-styli.sh -k -d ~/wallpaper
+feh --bg-scale "$(find ~/wallpaper -type f | shuf -n 1)"
