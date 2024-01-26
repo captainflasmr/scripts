@@ -1,3 +1,18 @@
 #! /bin/bash
-source Common.sh
-montage -tile 4x4 -mode Concatenate -gravity NorthWest -alpha off -background darkgrey -monitor "$@" montage.jpg
+# source Common.sh
+
+filename="montage_001.jpg"
+counter=1
+
+function create_uniq_filename ()
+{
+   while [[ -e $filename ]]; do
+      counter=$((counter + 1))
+      filename=$(printf "montage_%03d.jpg" $counter)
+   done
+}
+
+# create_uniq_filename
+# montage -tile 2x4 -mode Concatenate -gravity NorthWest -alpha off -background darkgrey -monitor "$@" -geometry 200x200+5+5 "$filename"
+create_uniq_filename
+montage -mode Concatenate -gravity NorthWest -alpha off -background darkgrey -monitor "$@" "$filename"
