@@ -50,7 +50,7 @@ function tidy_up ()
                   EXT=jpg
                   get_trunc_name
                   exiftool -orientation#=1 -overwrite_original_in_place "-FileModifyDate<DateTimeOriginal" "-FileModifyDate<CreateDate" "$A"
-                  convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
+                  convert_it "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' "$TRUNCNAME"
                fi
             done
          fi
@@ -65,11 +65,9 @@ function do_input ()
    echo "SOURCE"
    select_dir
    SRC=$DIR
-
    echo "DESTINATION"
    select_dir
    DST=$DIR
-
    echo "======================================================================"
    echo "DOING ${SRC}/ -> ${DST}/"
    list_filters
@@ -156,12 +154,12 @@ function backup_home ()
    if [[ $MONTH = "07" || $MONTH = "14" || $MONTH = "21" || $MONTH = "28" ]]; then
       if [[ ! -f $MAIL_FILE ]]; then
          echo
-         echo "---------- Updating Maildir ----------"
+         echo "---------- Doing Maildir ----------"
          echo
-         mbsync -a
-   #       echo "---------- Doing Maildir ----------"
-   #       tar zcf Maildir.tar.gz Maildir
-   #       echo "---------- Done Maildir ----------"
+         tar zcf Maildir.tar.gz .thunderbird
+         echo
+         echo "---------- Done Maildir ----------"
+         echo
          touch $MAIL_FILE
       fi
    else
@@ -178,8 +176,8 @@ function backup_home ()
                $TARGET/"$DATE"--RedSaucers.kdbx
          rsync -avP ~/DCIM/Volume \
                $TARGET/"$DATE"--Volume
-         # rsync -avP ~/Maildir.tar.gz \
-               # $TARGET/"$DATE"--Maildir.tar.gz
+         rsync -avP ~/Maildir.tar.gz \
+               $TARGET/"$DATE"--Maildir.tar.gz
          rsync -avP ~/DCIM/Backup/Contacts.vcf \
                $TARGET/"$DATE"--Contacts.vcf
          touch $ARC_FILE
