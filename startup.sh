@@ -1,6 +1,4 @@
 #!/bin/bash
-sleep 2
-
 # x11
 touchpad_x11="ZNT0001:00 14E5:650E Touchpad"
 touch_x11="ELAN902C:00 04F3:406B"
@@ -11,11 +9,12 @@ touch_wayland="1267:16491:ELAN902C:00_04F3:406B"
 KILL_LIST="redshift fusuma launch_polybar polybar picom \
 gammastep-indicator toggle_wlr_keyboard.sh launch_waybar waybar \
 swww polkit-gnome-authentication-agent-1 kmonad \
-ydotoold syncthing dunst autotiling udiskctrl wvkbd-mobintl"
+ydotoold syncthing dunst autotiling udiskctrl wvkbd-mobintl battery-monitor.sh"
 
 killall -q $KILL_LIST
 
 if [[ $XDG_SESSION_TYPE == "x11" ]]; then
+   feh --bg-scale "$(cat ~/.last_wallpaper_path)"
    xinput set-prop "$touchpad_x11" "libinput Natural Scrolling Enabled" 1
    xinput set-prop "$touchpad_x11" "libinput Accel Speed" 0.8
    # redshift -l 51.0:-1.0 -t 5700:3600 &
@@ -26,6 +25,8 @@ if [[ $XDG_SESSION_TYPE == "x11" ]]; then
    fi
    xset b off
 fi
+
+# emacs --daemon
 
 if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
    if [[ ! $XDG_CURRENT_DESKTOP == "KDE" ]]; then
@@ -40,15 +41,17 @@ fi
 
 nm-applet --indicator &
 /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
-kmonad ~/.config/kmonad/keyboard.kbd &
 ydotoold --socket-perm 0777 --socket-path=/run/user/1000/.ydotool_socket &
 syncthing -no-browser -no-browser -home="/home/jdyer/.config/syncthing" &
 autotiling &
 udisksctl mount -b /dev/mmcblk0p1
+battery-monitor.sh &
 
 # check for numpad plugged in and out
 NUMPAD_CONNECTED=0
 ONE_DISCONNECT=0
+
+keymap-load.sh
 
 while :
 do
