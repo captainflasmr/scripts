@@ -1,4 +1,7 @@
 #!/bin/bash
+
+sleep 2
+
 echo "Running the XKB script" >> /tmp/xkb_script.log
 echo "DISPLAY=$DISPLAY" >> /tmp/xkb_script.log
 
