@@ -1,9 +1,0 @@
-#!/bin/bash
-source Common.sh
-for A in $FILES; do
-   pre
-   EXT="mp3"
-   NEWFILE="${BASEDIR}/${FILE_NO_EXT}.$EXT"
-   ffmpeg -hide_banner -loglevel panic -stats \
-          -y -i "$A" -b:a 192k "$NEWFILE"
-done
