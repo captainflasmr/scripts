@@ -1,9 +1,11 @@
+acpi
 alacritty
 alsa-tools
 appimagelauncher
 arc-gtk-theme
 audacity
 awesome-terminal-fonts
+bleachbit
 chromium
 cmake
 copyq
@@ -57,10 +59,12 @@ kwin-bismuth
 less
 libiconv
 libvirt
+libreoffice-fresh
 libxcrypt-compat
 losslesscut-bin
 lsof
 lxappearance
+mailutils
 maim
 mako
 mb2md
