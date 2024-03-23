@@ -19,7 +19,9 @@
 .local/share/applications/wine
 .local/share/baloo
 .local/share/flatpak
+.local/share/fish
 .local/share/gnome-boxes
+.local/share/gvfs-metadata
 .local/share/icons
 .local/share/libvirt
 .local/share/sddm/xorg-session.log
