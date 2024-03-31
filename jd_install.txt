@@ -1,13 +1,15 @@
-adobe-source-code-pro-fonts
+acpi
 alacritty
 alsa-tools
 appimagelauncher
 arc-gtk-theme
 audacity
 awesome-terminal-fonts
+bleachbit
 chromium
 cmake
 copyq
+croc
 cronie
 deluge-gtk
 devede
@@ -25,6 +27,7 @@ filelight
 firefox
 fish
 flatpak
+font-manager
 gammastep
 gcc-ada
 gimp
@@ -56,9 +59,14 @@ kwin-bismuth
 less
 libiconv
 libvirt
+libreoffice-fresh
 libxcrypt-compat
+losslesscut-bin
 lsof
+lxappearance
+mailutils
 maim
+mako
 mb2md
 meld
 mpv
@@ -69,8 +77,11 @@ nfs-utils
 noto-fonts-emoji
 npm
 obs-studio
+okular
 onboard
 pandoc
+pavucontrol
+pass
 perl-image-exiftool
 perl-rename
 plasma-wayland-session
@@ -94,6 +105,7 @@ rust
 scribus
 shotcut
 slurp
+smbclient
 sof-firmware
 sox
 speedtest-cli
@@ -102,6 +114,9 @@ sxiv
 syncthing
 tesseract
 tesseract-data-eng
+texlive-latex
+texlive-latexextra
+texlive-plaingeneric
 thunar
 thunderbird
 tk
@@ -121,6 +136,7 @@ vnstat
 vscode-css-languageserver
 waifu2x-ncnn-vulkan
 waybar
+wev
 wf-recorder
 wl-clipboard
 wofi

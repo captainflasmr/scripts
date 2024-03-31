@@ -7,4 +7,5 @@ for A in $FILES; do
    # -j load:proc:save    thread count for load/proc/save (default=1:2:2) can be 1:2,2,2:2 for multi-gpu
 
    convert_it_gan "$A" -n realesrgan-x4plus -j 8:8:8 -f jpg "$NEWFILE"
+   # convert_it_gan "$A" -n realesrgan-ncnn-vulcan -j 8:8:8 -f jpg "$NEWFILE"
 done

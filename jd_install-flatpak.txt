@@ -3,5 +3,6 @@ org.gtk.Gtk3theme.Adwaita-dark
 org.upscayl.Upscayl
 com.microsoft.Edge
 org.kde.krita
-com.transmissionbt.Transmission
 org.kde.kdenlive
+com.rafaelmardojai.Blanket
+de.haeckerfelix.Shortwave

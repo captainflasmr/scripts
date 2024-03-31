@@ -16,48 +16,48 @@ function resize_images() {
       EXTOLD=webp
       EXT=jpg
       NEWFILE="${DST}/${FILE_NO_EXT}.${EXT}"
-      rm -f "$OLDFILE"
       if [[ ! -f "${NEWFILE}" ]]; then
          printf "${NEWFILE} \n"
          # convert "$A" -auto-orient -strip -quality 30% -resize '1024x>' -resize 'x1024>' "${NEWFILE}"
          convert "$A" -auto-orient -strip -quality 40% -resize '768x>' -resize 'x768>' "${NEWFILE}"
-         #exiftool -overwrite_original -TagsFromFile "$A" "$DST/${FILE}"
+         # apply meta data (will take longer)
+         exiftool -overwrite_original -TagsFromFile "$A" "${NEWFILE}"
          touch -r "$A" "${NEWFILE}"
       fi
    done
 }
 
-# LIST="doodles animals got landscapes monsters portraits stilllife buffy kate misc starwars superhero old"
-# export IFS=" "
-# echo
-# echo "Doing Art..."
-# echo
-# for DIR in $LIST; do
-#    echo $DIR
-#    SRC="$HOME/Photos/Gallery/${DIR}"
-#    DST="$HOME/DCIM/content/art--gallery/${DIR}"
-#    # rm -fr $DST/*.jpg
-#    resize_images
-# done
+LIST="doodles animals got landscapes monsters portraits stilllife buffy kate misc starwars superhero old"
+export IFS=" "
+echo
+echo "Doing Art..."
+echo
+for DIR in $LIST; do
+   echo $DIR
+   SRC="$HOME/Photos/Gallery/${DIR}"
+   DST="$HOME/DCIM/content/art--gallery/${DIR}"
+   # rm -fr $DST/*.jpg
+   # resize_images
+done
 
-# LIST="album1 album2 album3 album4 babybooks cards certificates graduation misc originals transformers"
-# export IFS=" "
-# echo
-# echo "Doing Scans..."
-# echo
-# for DIR in $LIST; do
-#    echo $DIR
-#    SRC="$HOME/Photos/Scans/${DIR}"
-#    DST="$HOME/DCIM/content/scans/${DIR}"
-#    # rm -fr $DST/*.jpg
-#    resize_images
-# done
+LIST="album1 album2 album3 album4 babybooks cards certificates graduation misc originals transformers"
+export IFS=" "
+echo
+echo "Doing Scans..."
+echo
+for DIR in $LIST; do
+   echo $DIR
+   SRC="$HOME/Photos/Scans/${DIR}"
+   DST="$HOME/DCIM/content/scans/${DIR}"
+   # rm -fr $DST/*.jpg
+   # resize_images
+done
 
 export IFS=" "
 echo
 echo "Doing Photos..."
 echo
-for DIR in {2003..2023}; do
+for DIR in {2003..2024}; do
    echo $DIR
    SRC="$HOME/Photos/${DIR}"
    DST="$HOME/DCIM/content/photos/${DIR}"

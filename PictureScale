@@ -4,6 +4,8 @@ for A in $FILES; do
    pre
    # convert_it "$A" -auto-orient -strip -quality 50% -resize '3072x>' -resize 'x3072>' "$A"
    # convert_it "$A" -auto-orient -strip -resize 64x100\! "$A"
-   convert_it "$A" -auto-orient -strip -resize 600x420\! "$A"
+   # convert_it "$A" -auto-orient -strip -resize 600x420\! "$A"
    # convert_it "$A" -auto-orient -resize 50% "$A"
+   # convert_it "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' "$A"
+   convert_it "$A" -auto-orient -strip -quality 50% -resize '3840x>' -resize 'x3840>' "$A"
 done
