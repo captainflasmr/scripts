@@ -1,0 +1,12 @@
+#! /bin/bash
+# Installation:
+# apt-get install steghide
+
+# Usage:
+# steghide embed -cf picture.jpg -ef secret.txt
+# steghide extract -sf picture.jpg
+# steghide info picture.jpg
+
+steghide embed -cf $1 -ef $2
+#steghide extract -sf $1
+#steghide info $1
