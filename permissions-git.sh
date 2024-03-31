@@ -15,8 +15,6 @@ DCIM/themes/hugo-xmag
 DCIM/themes/Mainroad
 repos/fd-find
 repos/old-ada-mode
-repos/dotfiles
-.config
 "
 
 # create a git alias to revert permissions

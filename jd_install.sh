@@ -28,16 +28,12 @@ if command -v yay &> /dev/null ; then
    LIST=$(cat "/$HOME/bin/jd_install.txt")
    echo $LIST
    for file in $LIST; do
-      if ! pacman -Qi $file &> /dev/null; then
-         echo "----------------------------------------"
-         echo "PKG : Doing $file"
-         echo "----------------------------------------"
-         yay -Sy --noconfirm --needed $file
-      else
-         echo "----------------------------------------"
-         echo "PKG : SKIPPING $file"
-         echo "----------------------------------------"
-      fi
+      echo
+      echo "----------------------------------------"
+      echo "PKG : Doing $file"
+      echo "----------------------------------------"
+      echo
+      yay -Sy --noconfirm --needed $file
    done
 
    echo
@@ -48,20 +44,19 @@ if command -v yay &> /dev/null ; then
    LIST=$(cat "/$HOME/bin/jd_install_aur.txt")
    echo $LIST
    for file in $LIST; do
-      if ! pacman -Qi $file &> /dev/null; then
-         echo "----------------------------------------"
-         echo "AUR : Doing $file"
-         echo "----------------------------------------"
-         yay -Sy --noconfirm --needed $file
-      else
-         echo "----------------------------------------"
-         echo "PKG : SKIPPING $file"
-         echo "----------------------------------------"
-      fi
+      echo
+      echo "----------------------------------------"
+      echo "AUR : Doing $file"
+      echo "----------------------------------------"
+      echo
+      yay -Sy --noconfirm --needed $file
    done
 fi
 
-exit
+# switch shells
+if command -v fish &> /dev/null ; then
+   chsh -s /usr/bin/fish
+fi
 
 # flatpaks
 if command -v flatpak &>/dev/null; then
@@ -76,11 +71,6 @@ if command -v flatpak &>/dev/null; then
       flatpak install -y "$app_id"
       echo "-------------------------"
    done < "$LIST"
-fi
-
-# switch shells
-if command -v fish &> /dev/null ; then
-   chsh -s /usr/bin/fish
 fi
 
 # make sure cronie is enabled

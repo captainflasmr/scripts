@@ -14,6 +14,7 @@ nwg-shell
 pamac-nosnap
 photocollage
 picom-git
+pywal-git
 qt5-styleplugins
 realesrgan-ncnn-vulkan
 ruby-fusuma
@@ -21,8 +22,5 @@ steghide
 surfshark-client
 swww
 wl-color-picker
+wlrobs-hg
 wordnet-cli
-vscodium-bin
-icedrive-appimage
-sway-audio-idle-inhibit-git
-python-eyed3

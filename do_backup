@@ -50,7 +50,7 @@ function tidy_up ()
                   EXT=jpg
                   get_trunc_name
                   exiftool -orientation#=1 -overwrite_original_in_place "-FileModifyDate<DateTimeOriginal" "-FileModifyDate<CreateDate" "$A"
-                  convert_it "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' "$TRUNCNAME"
+                  convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
                fi
             done
          fi
@@ -65,9 +65,11 @@ function do_input ()
    echo "SOURCE"
    select_dir
    SRC=$DIR
+
    echo "DESTINATION"
    select_dir
    DST=$DIR
+
    echo "======================================================================"
    echo "DOING ${SRC}/ -> ${DST}/"
    list_filters
@@ -79,7 +81,7 @@ function do_input ()
 
 function do_it ()
 {
-   RSYNC="rsync -rltsiP --no-g --copy-links --delete --size-only --modify-window=4 \
+   RSYNC="rsync -rltsiP --copy-links --delete --size-only --modify-window=4 \
     --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*' \
     --filter=':- .gitignore' \
      --exclude-from=\"$HOME/bin/do_backup_excl\" "
@@ -125,12 +127,12 @@ function do_it ()
       S1=$(mktemp)
       S2=$(mktemp)
       cd "$SRC" || exit
-      ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S1"
+      ls -R --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S1"
       cd "$DST" || exit
-      ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S2"
+      ls -R --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S2"
       diff --side-by-side --suppress-common-lines "$S1" "$S2"
-      # rm -f "$S1"
-      # rm -f "$S2"
+      rm -f "$S1"
+      rm -f "$S2"
    fi
 
    echo
@@ -154,12 +156,12 @@ function backup_home ()
    if [[ $MONTH = "07" || $MONTH = "14" || $MONTH = "21" || $MONTH = "28" ]]; then
       if [[ ! -f $MAIL_FILE ]]; then
          echo
-         echo "---------- Doing Maildir ----------"
+         echo "---------- Updating Maildir ----------"
          echo
-         tar zcf Maildir.tar.gz .thunderbird
-         echo
-         echo "---------- Done Maildir ----------"
-         echo
+         mbsync -a
+   #       echo "---------- Doing Maildir ----------"
+   #       tar zcf Maildir.tar.gz Maildir
+   #       echo "---------- Done Maildir ----------"
          touch $MAIL_FILE
       fi
    else
@@ -172,13 +174,13 @@ function backup_home ()
       if [[ ! -f $ARC_FILE ]]; then
          TARGET=~/nas/Archive/Documents/"$DATE"
          mkdir -p $TARGET
-         rsync -avP --no-g ~/DCIM/content/RedSaucers.kdbx \
+         rsync -avP ~/DCIM/content/RedSaucers.kdbx \
                $TARGET/"$DATE"--RedSaucers.kdbx
-         rsync -avP --no-g ~/DCIM/Volume \
+         rsync -avP ~/DCIM/Volume \
                $TARGET/"$DATE"--Volume
-         rsync -avP --no-g ~/Maildir.tar.gz \
-               $TARGET/"$DATE"--Maildir.tar.gz
-         rsync -avP --no-g ~/DCIM/Backup/Contacts.vcf \
+         # rsync -avP ~/Maildir.tar.gz \
+               # $TARGET/"$DATE"--Maildir.tar.gz
+         rsync -avP ~/DCIM/Backup/Contacts.vcf \
                $TARGET/"$DATE"--Contacts.vcf
          touch $ARC_FILE
       fi
@@ -229,7 +231,7 @@ do
          done
          ;;
       ventoy)
-         RSYNC="rsync -rltsiP --no-g --copy-links --delete --size-only --modify-window=4 \
+         RSYNC="rsync -rltsiP --copy-links --delete --size-only --modify-window=4 \
     --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*' --exclude 'Photos' --exclude 'Maildir' \
      --exclude 'Volume' --exclude 'Videos' --exclude 'KritaRecorder' --exclude 'Reference' --exclude 'music' \
     --filter=':- .gitignore' \

@@ -11,12 +11,13 @@
 .gnupg
 .ignore
 .local
-.password-store
+.mbsyncrc
 .ssh
 .profile
 Applications
 DCIM
 KritaRecorder
+Maildir
 Photos
 Snapseed
 Sync
@@ -24,7 +25,7 @@ bin
 examples
 publish
 scripts
+tmp.org
 wallpaper
 repos
 .face.icon
-.thunderbird
