@@ -6,7 +6,7 @@ if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
       echo '{"text": " REC", "class": "recording"}'
    else
       # echo '{"text": "📽️", "class": "not-recording"}'
-      echo '{"text": " ", "class": "not-recording"}'
+      echo '{"text": "", "class": "not-recording"}'
    fi
 else
    if pgrep "^ffmpeg$" > /dev/null; then
