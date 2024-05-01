@@ -26,8 +26,6 @@ if [[ $XDG_SESSION_TYPE == "x11" ]]; then
    xset b off
 fi
 
-# emacs --daemon
-
 if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
    if [[ ! $XDG_CURRENT_DESKTOP == "KDE" ]]; then
       # gammastep-indicator &
@@ -47,57 +45,40 @@ autotiling &
 udisksctl mount -b /dev/mmcblk0p1
 battery-monitor.sh &
 
-# check for numpad plugged in and out
 NUMPAD_CONNECTED=0
-ONE_DISCONNECT=0
+KEYBOARD_CONNECTED=0
 
-keymap-load.sh
+# keymap-load.sh
 
 while :
 do
-   if [[ -L "/dev/input/by-id/usb-13ba_0001-event-kbd" ]]; then
-      if [[ $NUMPAD_CONNECTED == 0 ]]; then
-         kmonad ~/.config/kmonad/numpad.kbd &
-         echo "NUMPAD CONNECTED!"
-         notify-send -t 3000 "NUMPAD CONNECTED!"
-         NUMPAD_CONNECTED=1
-         case $DESKTOP_SESSION in
-            sway)
-               swaymsg input "$touch_wayland" events disabled
-               ;;
-            hyprland)
-               hyprctl keyword "device:${touch_wayland}:enabled" true
-               ;;
-            plasma | i3)
-               xinput disable "$touch_x11"
-               ;;
-            *)
-               xinput disable "$touch_x11"
-               ;;
-         esac
-         ONE_DISCONNECT=0
+   if [[ -L "/dev/input/by-id/usb-SEMICO_USB_Gaming_Keyboard-event-kbd" ]]; then
+      if [[ $KEYBOARD_CONNECTED == 0 ]]; then
+         KEYBOARD_CONNECTED=1
+         notify-send -t 3000 "KEYBOARD CONNECTED!"
+         swaymsg input 1:1:AT_Translated_Set_2_keyboard events disabled
       fi
    else
-      if [[ $ONE_DISCONNECT == 0 ]]; then
-         echo "NUMPAD DISCONNECTED!"
-         notify-send -t 3000 "NUMPAD DISCONNECTED!"
+      if [[ $KEYBOARD_CONNECTED == 1 ]]; then
+         KEYBOARD_CONNECTED=0
+         notify-send -t 3000 "KEYBOARD DISCONNECTED!"
+         swaymsg input 1:1:AT_Translated_Set_2_keyboard events enabled
+      fi
+   fi
+
+   if [[ -L "/dev/input/by-id/usb-13ba_0001-event-kbd" ]]; then
+      if [[ $NUMPAD_CONNECTED == 0 ]]; then
+         NUMPAD_CONNECTED=1
+         notify-send -t 3000 "NUMPAD CONNECTED!"
+         swaymsg input "$touch_wayland" events disabled
+         kmonad ~/.config/kmonad/numpad.kbd &
+      fi
+   else
+      if [[ $NUMPAD_CONNECTED == 1 ]]; then
          NUMPAD_CONNECTED=0
-         case $DESKTOP_SESSION in
-            sway)
-               # for sway disable touch screen
-               swaymsg input "$touch_wayland" events enabled
-               ;;
-            hyprland)
-               hyprctl keyword "device:${touch_wayland}:enabled" false
-               ;;
-            plasma | i3)
-               xinput enable "$touch_x11"
-               ;;
-            *)
-               xinput enable "$touch_x11"
-               ;;
-         esac
-         ONE_DISCONNECT=1
+         notify-send -t 3000 "NUMPAD DISCONNECTED!"
+         swaymsg input "$touch_wayland" events enabled
+         killall -q kmonad
       fi
    fi
    sleep 2
