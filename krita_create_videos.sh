@@ -15,6 +15,10 @@ echo "Generating Krita videos..."
 
 mkdir -p "$DEST"
 
+if [[ $REGENALL == 1 ]]; then
+   find . -type d -name "pad" -exec rm -fr {} +
+fi
+
 for A in $DIRS; do
    REGENVID=0
    cd "$SRC/$A"
@@ -35,27 +39,6 @@ for A in $DIRS; do
       echo "Generating $DEST/$A.mp4 ..."
       ffmpeg -hide_banner -loglevel panic -stats \
              -y -start_number 0 -i "$PADDIR/%7d.jpg" -c:v libx264 -vf \
-             "fps=25,format=yuv420p" "$DEST/$A.mp4"
+             "fps=10,format=yuv420p" "$DEST/$A.mp4"
    fi
 done
-
-if [[ $REGENALL == 1 ]]; then
-
-   FILES=$(find $DEST -maxdepth 1 -type f -regextype sed -regex '^.*\/[0-9]\{14\}.mp4$')
-
-   for A in $FILES; do
-      echo file \'$A\' >> "$DEST/mylist.txt"
-   done
-
-   sort "$DEST/mylist.txt" > "$DEST/mylistsorted.txt"
-
-   cd "$DEST"
-
-   ffmpeg -hide_banner -loglevel panic -stats \
-          -y -f concat -safe 0 -i mylistsorted.txt -c copy "${DEST}/$MYDATE-all.mp4"
-
-   rm mylist.txt
-   rm mylistsorted.txt
-else
-   echo "nothing to do!"
-fi
