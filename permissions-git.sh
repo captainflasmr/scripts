@@ -23,6 +23,7 @@ repos/dotfiles
 git config --global --add alias.permission-reset '!git diff -p -R --no-ext-diff --no-color --diff-filter=M | grep -E "^(diff|(old|new) mode)" --color=never | git apply'
 git config --global user.name "james@dyerdwelling.family"
 git config --global user.email "james@dyerdwelling.family"
+git config core.fileMode false
 
 for item in $LIST; do
    echo $item
