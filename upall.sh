@@ -18,4 +18,6 @@ echo "----------------------------------------"
 echo "flatpak update"
 echo "----------------------------------------"
 echo
-flatpak upgrade
+if command -v flatpak &> /dev/null ; then
+   flatpak upgrade
+fi
