@@ -81,8 +81,9 @@ function do_it ()
 {
    RSYNC="rsync -rltsiPv --info=progress2 --no-g --copy-links --delete --size-only --modify-window=4 \
     --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*' \
-    --filter=':- .gitignore' \
      --exclude-from=\"$HOME/bin/do_backup_excl\" "
+        # --filter=':- .gitignore'
+
 
    if [[ ! -d "$SRC" ]]; then
       echo
@@ -230,11 +231,11 @@ do
          ;;
       ventoy)
          RSYNC="rsync -rltsiPv --info=progress2 --no-g --copy-links --delete --modify-window=4 \
-    --exclude '.Trash*' --exclude 'nas' --exclude 'python3.9' --exclude 'kate' --exclude 'plasma' \
+    --exclude '.Trash*' --exclude 'nas' --exclude 'python3.9' --exclude 'kate' --exclude 'plasma' --exclude '.git' \
  --exclude '#recycle*' --exclude '_recycle*' --exclude 'Photos' --exclude 'Maildir' --exclude '.thunderbird' \
       --exclude 'Volume' --exclude 'Videos' --exclude 'KritaRecorder' --exclude 'Reference' --exclude 'music' \
-         --filter=':- .gitignore' \
      --exclude-from=\"$HOME/bin/do_backup_excl\" "
+         # --filter=':- .gitignore'
 
          SRC="$HOME"
          DST="$BASE/Ventoy/Home"
