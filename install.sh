@@ -114,6 +114,9 @@ echo "other stuff"
 echo "----------------------------------------"
 echo
 # build wvkbd
+# Modify the GRUB config file sudo /etc/default/grub
+# GRUB_CMDLINE_LINUX_DEFAULT append "i915.enable_dpcd_backlight=3" then save the file
+# sudo grub-mkconfig -o /boot/grub/grub.cfg
 
 echo
 echo "----------------------------------------"
