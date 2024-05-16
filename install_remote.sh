@@ -1,10 +1,6 @@
 #!/bin/bash
 # sync the latest github repos to my config
 
-mkdir -p $HOME/repos
-
-cd $HOME/repos
-
 # intelligently get / update repos
 function get_repos ()
 {
@@ -15,7 +11,6 @@ function get_repos ()
       echo "----------------------------------------"
       echo
       curr_repos="$1/${repos}"
-
       if [[ ! -d "$repos" ]]; then
          echo "Cloning..."
          git clone "$curr_repos"
@@ -28,7 +23,16 @@ function get_repos ()
    done
 }
 
-get_repos "git@github.com:captainflasmr" "dotfiles fd-find selected-window-accent-mode scripts"
+# themes
+mkdir -p $HOME/repos/themes
+cd $HOME/repos/themes
+get_repos "git@github.com:captainflasmr" "hugo-bootstrap-gallery"
+get_repos "https://github.com/Vimux" "Mainroad"
+
+# others
+mkdir -p $HOME/repos
+cd $HOME/repos
+get_repos "git@github.com:captainflasmr" "dotfiles fd-find selected-window-accent-mode scripts xkb-mode"
 get_repos "https://github.com/tkurtbond" "old-ada-mode"
 get_repos "https://github.com/jjsullivan5196" "wvkbd"
 
