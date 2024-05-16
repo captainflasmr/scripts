@@ -1,22 +1,25 @@
 #!/bin/bash
 # script to sync a local updated MyMusicLibrary
 
-SRC=$HOME/MyMusicLibrary
-DIRS=$(ls $SRC)
+SRC="$HOME/nas/Music/MyMusicLibrary"
 
-function do_sync ()
-{
-   for DIR in $DIRS; do
-      echo "$SRC/$DIR -> $1/$DIR"
-      rsync -arz --no-g --modify-window=4 "$SRC/$DIR/" "$1/$DIR/"
-   done
+declare -a DESTINATIONS=(
+    "/run/media/jdyer/EOS_DIGITAL/MyMusicLibrary"
+    "/run/media/jdyer/MusicLib/MyMusicLibrary"
+    "/run/media/jdyer/PhoneSD/MyMusicLibrary"
+    "/run/media/jdyer/6665-3063/MyMusicLibrary"
+    "/run/media/jdyer/SPORT GO/Music/MyMusicLibrary"
+)
+
+function do_sync() {
+    rsync -arz --delete --no-g --modify-window=4 "$SRC/" "$1/"
 }
 
-# clipjam
-do_sync /run/media/jdyer/EOS_DIGITAL/MyMusicLibrary
-
-# pro2 sd card
-# do_sync /run/media/jdyer/6665-3063/MyMusicLibrary
-
-# nas
-# do_sync $HOME/nas/Music/MyMusicLibrary
+for DEST in "${DESTINATIONS[@]}"; do
+    if [[ -d "$DEST" ]]; then
+        echo "Syncing to $DEST..."
+        do_sync "$DEST"
+    else
+        echo "$DEST not present."
+    fi
+done
