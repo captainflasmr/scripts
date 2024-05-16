@@ -28,7 +28,9 @@ function output_json {
        echo "{\"text\": \"\", \"class\": \"active\"}"
     else
        # echo "{\"text\": \"$text\", \"class\": \"inactive\"}"
-       echo "{\"text\": \"\", \"class\": \"inactive\"}"
+       # echo "{\"text\": \"\", \"class\": \"inactive\"}"
+       # echo "{\"text\": \"o\", \"class\": \"inactive\"}"
+       echo "{\"text\": \".\", \"class\": \"inactive\"}"
     fi
 }
 
