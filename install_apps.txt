@@ -56,11 +56,13 @@ foot
 fuzzel
 gammastep
 gcc-ada
+gdb
 gimp
 gimp-plugin-gmic
 gnome-keyring
 gnome-terminal
 gnuplot
+gparted
 grim
 gthumb
 gvfs
@@ -132,7 +134,7 @@ smbclient
 sof-firmware
 sox
 speedtest-cli
-swaybg
+swayr
 sxiv
 syncthing
 tesseract
