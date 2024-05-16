@@ -1,10 +1,47 @@
 #!/bin/bash
 
-CONFIG_FILES="$HOME/.config/waybar/config $HOME/.config/waybar/style.css $HOME/.config/waybar/modules.json"
+# Define directories to watch.
+WATCH_DIRECTORIES=(
+    "$HOME/.config/waybar_garuda"
+    "$HOME/.config/waybar_jdyer"
+)
 
-while true; do
-   waybar &
-   inotifywait -e attrib,create,modify $CONFIG_FILES
-   # killall -SIGUSR2 waybar
-   killall waybar
+# Define cleanup function
+cleanup() {
+    echo "Cleaning up..."
+    # Kill background inotifywait loops
+    kill 0
+    killall waybar 2>/dev/null
+    exit 0
+}
+
+# Setup a trap for SIGINT (Ctrl+C) and SIGTERM
+trap "cleanup" SIGINT SIGTERM
+
+start_waybar() {
+    echo "Restarting waybar..."
+    killall waybar 2>/dev/null
+    waybar &
+}
+
+# Start waybar initially
+start_waybar
+
+echo "Watching for changes. Press Ctrl+C to stop."
+
+# Function to monitor changes in a directory
+monitor_directory() {
+    DIR=$1
+    while inotifywait -e attrib,create,modify,delete,move -qq "$DIR"; do
+        echo "Change detected in $DIR"
+        start_waybar
+    done
+}
+
+# Start monitoring each directory in the background
+for DIR in "${WATCH_DIRECTORIES[@]}"; do
+    monitor_directory "$DIR" &
 done
+
+# Wait for any process to exit
+wait
