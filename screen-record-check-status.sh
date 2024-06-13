@@ -1,7 +1,8 @@
 #!/bin/bash
 
 if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
-   if pgrep -x "^wf-recorder$"  > /dev/null; then
+   # if pgrep -x "^wf-recorder$"  > /dev/null; then
+   if pgrep -x "^wl-screenrec$"  > /dev/null; then
       # echo '{"text": "📽️ REC", "class": "recording"}'
       echo '{"text": " REC", "class": "recording"}'
    else
