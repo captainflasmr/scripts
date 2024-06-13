@@ -1,5 +1,6 @@
 #!/bin/bash
 source Common.sh
 for A in $FILES; do
-   mp3info -x "$A"
+   # mp3info -x "$A"
+   id3v2 -l "$A"
 done
