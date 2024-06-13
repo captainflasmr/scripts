@@ -37,6 +37,8 @@ if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
    fi
 fi
 
+kdeconnectd &
+kdeconnect-indicator &
 nm-applet --indicator &
 /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
 ydotoold --socket-perm 0777 --socket-path=/run/user/1000/.ydotool_socket &
@@ -68,6 +70,7 @@ do
 
    if [[ -L "/dev/input/by-id/usb-13ba_0001-event-kbd" ]]; then
       if [[ $NUMPAD_CONNECTED == 0 ]]; then
+         setxkbmap gb
          NUMPAD_CONNECTED=1
          notify-send -t 3000 "NUMPAD CONNECTED!"
          swaymsg input "$touch_wayland" events disabled
@@ -75,6 +78,7 @@ do
       fi
    else
       if [[ $NUMPAD_CONNECTED == 1 ]]; then
+         keymap-load.sh
          NUMPAD_CONNECTED=0
          notify-send -t 3000 "NUMPAD DISCONNECTED!"
          swaymsg input "$touch_wayland" events enabled
