@@ -1,7 +1,7 @@
 #!/bin/bash
 
-LIST="repos/wvkbd
-repos/qtdoc
+LIST="source/repos/wvkbd
+source/repos/qtdoc
 DCIM/Art/Content/ArtAssets
 DCIM/Art/Content/ArtRage
 DCIM/Art/Content/ArtRagePenTool
@@ -13,9 +13,9 @@ DCIM/themes/Hugo-Octopress
 DCIM/themes/hugo-theme-notrack
 DCIM/themes/hugo-xmag
 DCIM/themes/Mainroad
-repos/fd-find
-repos/old-ada-mode
-repos/dotfiles
+source/repos/fd-find
+source/repos/old-ada-mode
+source/repos/dotfiles
 .config
 "
 
