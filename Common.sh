@@ -95,7 +95,7 @@ function convert_it () {
    FIRST="${@: 1:1}"
    LAST="${@: -1}"
 
-   convert "$FIRST" $ARGS "$TMP.$EXT"
+   magick "$FIRST" $ARGS "$TMP.$EXT"
    exiftool -overwrite_original_in_place -TagsFromFile "$FIRST" "$TMP.$EXT"
    touch -r "$FIRST" "$TMP.$EXT"
    trash-put "$FIRST"
