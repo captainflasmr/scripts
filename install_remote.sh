@@ -24,17 +24,18 @@ function get_repos ()
 }
 
 # themes
-mkdir -p $HOME/repos/themes
-cd $HOME/repos/themes
+mkdir -p $HOME/source/repos/themes
+cd $HOME/source/repos/themes
 get_repos "git@github.com:captainflasmr" "hugo-bootstrap-gallery"
 get_repos "https://github.com/Vimux" "Mainroad"
 
 # others
-mkdir -p $HOME/repos
-cd $HOME/repos
-get_repos "git@github.com:captainflasmr" "dotfiles fd-find selected-window-accent-mode scripts xkb-mode"
+mkdir -p $HOME/source/repos
+cd $HOME/source/repos
+get_repos "git@github.com:captainflasmr" "arscript-mode cigi-ccl_4_0 dotfiles fd-find scripts selected-window-accent-mode xkb-mode"
 get_repos "https://github.com/tkurtbond" "old-ada-mode"
 get_repos "https://github.com/jjsullivan5196" "wvkbd"
+get_repos "https://github.com/kragen" "xcompose"
 
 echo
 echo "Ready to sync to local directories? : Press <any key> to continue"
