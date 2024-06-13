@@ -1,0 +1,83 @@
+#!/bin/bash
+# script to sync many different things
+
+RSYNC="rsync -rltsiP --no-g --copy-links --delete --size-only --modify-window=4 "
+
+function do_sync() {
+   DORSYNC="${RSYNC}\"$SRC/\" \"$1/\""
+   echo "$DORSYNC"
+   eval "$DORSYNC"
+}
+
+case "$1" in
+   --music)
+      SRC="$HOME/nas/Music/MyMusicLibrary"
+
+      declare -a DESTINATIONS=(
+         "/run/media/jdyer/EOS_DIGITAL/MyMusicLibrary"
+         "/run/media/jdyer/MusicLib/MyMusicLibrary"
+         "/run/media/jdyer/PhoneSD/MyMusicLibrary"
+         "/run/media/jdyer/6665-3063/MyMusicLibrary"
+         "/run/media/jdyer/SPORT GO/Music/MyMusicLibrary"
+      )
+
+      for DEST in "${DESTINATIONS[@]}"; do
+         if [[ -d "$DEST" ]]; then
+            echo "Syncing to $DEST..."
+            do_sync "$DEST"
+         else
+            echo "$DEST not present."
+         fi
+      done
+      ;;
+
+   --art)
+      LOCAL_SRC="$HOME/DCIM/Art/Working/"
+      REMOTE_SRC="$HOME/nas/OneDrive/Documents/Art/"
+
+      if [[ $2 == "in" ]]; then
+         RSYNC+=" \"${REMOTE_SRC}/\" \"${LOCAL_SRC}/\""
+      else
+         RSYNC+=" \"${LOCAL_SRC}/\" \"${REMOTE_SRC}/\""
+      fi
+
+      eval "$RSYNC"
+      ;;
+
+   --photos)
+      SRC="$HOME/nas/Photos"
+
+      declare -a DESTINATIONS=(
+         "/run/media/jdyer/6665-3063/Photos"
+      )
+
+      for DEST in "${DESTINATIONS[@]}"; do
+         if [[ -d "$DEST" ]]; then
+            echo "Syncing to $DEST..."
+            DORSYNC="${RSYNC}--exclude 'thumbnails-digikam.db' --exclude 'digikam4.db' --exclude 'similarity.db' --exclude 'recognition.db' \"$SRC/\" \"$DEST/\""
+            echo "$DORSYNC"
+            eval "$DORSYNC"
+            # do_sync "$DEST"
+         else
+            echo "$DEST not present."
+         fi
+      done
+      ;;
+
+   --dvd)
+      SRC="$HOME/nas/DVD"
+
+      declare -a DESTINATIONS=(
+         "/run/media/jdyer/14E26A1000E42694/DVD"
+      )
+
+      for DEST in "${DESTINATIONS[@]}"; do
+         if [[ -d "$DEST" ]]; then
+            echo "Syncing to $DEST..."
+            do_sync "$DEST"
+         else
+            echo "$DEST not present."
+         fi
+      done
+      ;;
+esac
