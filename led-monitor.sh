@@ -25,12 +25,10 @@ function output_json {
     local active="$2"
     if [ "$active" = "1" ]; then
        # echo "{\"text\": \"$text\", \"class\": \"active\"}"
-       echo "{\"text\": \"\", \"class\": \"active\"}"
+       echo "{\"text\": \"🔴\", \"class\": \"active\"}"
     else
        # echo "{\"text\": \"$text\", \"class\": \"inactive\"}"
-       # echo "{\"text\": \"\", \"class\": \"inactive\"}"
-       # echo "{\"text\": \"o\", \"class\": \"inactive\"}"
-       echo "{\"text\": \".\", \"class\": \"inactive\"}"
+       echo "{\"text\": \"o\", \"class\": \"inactive\"}"
     fi
 }
 
