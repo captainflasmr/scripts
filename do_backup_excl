@@ -24,6 +24,7 @@
 .local/share/gvfs-metadata
 .local/share/icons
 .local/share/libvirt
+.local/share/nomic.ai
 .local/share/sddm/xorg-session.log
 .local/share/wallpapers/
 .local/share/waydroid
@@ -45,5 +46,4 @@ lock
 public
 public_html
 qBittorrent
-repos/xero_iso
 syncthing
