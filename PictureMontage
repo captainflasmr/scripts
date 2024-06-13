@@ -4,6 +4,13 @@
 filename="montage_001.jpg"
 counter=1
 
+# Target size for the images
+width=400
+
+for img in "$@"; do
+  convert "$img" -resize "${width}x" "$img"
+done
+
 function create_uniq_filename ()
 {
    while [[ -e $filename ]]; do
@@ -15,4 +22,4 @@ function create_uniq_filename ()
 # create_uniq_filename
 # montage -tile 2x4 -mode Concatenate -gravity NorthWest -alpha off -background darkgrey -monitor "$@" -geometry 200x200+5+5 "$filename"
 create_uniq_filename
-montage -mode Concatenate -gravity NorthWest -alpha off -background darkgrey -monitor "$@" "$filename"
+montage -tile 2x4 -mode Concatenate -gravity NorthWest -alpha off -background darkgrey -monitor "$@" "$filename"
