@@ -73,11 +73,12 @@ gwenview
 hugo
 hunspell
 hunspell-en_gb
+id3v2
 inotify-tools
 jdk21-openjdk
 k3b
 kcolorchooser
-kdenlivee
+kdenlive
 keepassxc
 kleopatra
 kolf
@@ -97,6 +98,7 @@ maim
 mako
 mb2md
 meld
+mp3info
 mpv
 ncdu
 neofetch
@@ -182,6 +184,7 @@ qt5-styleplugins
 realesrgan-ncnn-vulkan
 ruby-fusuma
 steghide
+wl-screenrec
 surfshark-client
 sway-audio-idle-inhibit-git
 swww
