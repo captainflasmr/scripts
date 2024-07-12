@@ -1,6 +1,6 @@
 #!/bin/bash
 
-wallpaper_path="$(find ~/wallpaper -type f | shuf -n 1)"
+wallpaper_path="$(find ~/wallpaper/wallpaper-new -type f | shuf -n 1)"
 echo $wallpaper_path > ~/.last_wallpaper_path
 cp -f $wallpaper_path ~/.last_wallpaper.jpg
 

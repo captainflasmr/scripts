@@ -8,5 +8,5 @@ for A in $FILES; do
       # -y -i "$A" -threads 8 -filter_complex "[0:v]setpts=0.5*PTS[v];[0:a]atempo=2[a]" -map "[v]" -map "[a]" -r 30 "${BASE}-sped-${MYDATE}.mp4"
 
    NEWFILE="${BASEDIR}/${FILE_NO_EXT}-sped-${MYDATE}.mp4"
-   convert_it_video "$A" -threads 8 -an -filter:v "setpts=0.1*PTS" -r 30 $NEWFILE
+   convert_it_video "$A" -threads 8 -an -filter:v "setpts=0.5*PTS" -r 30 $NEWFILE
 done

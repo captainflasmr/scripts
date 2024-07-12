@@ -1,5 +1,7 @@
 #! /bin/bash
 
+PHOTOS_SRC="/run/media/jdyer/Backup/Photos"
+
 function resize_images() {
 
    cd $SRC
@@ -18,8 +20,8 @@ function resize_images() {
       NEWFILE="${DST}/${FILE_NO_EXT}.${EXT}"
       if [[ ! -f "${NEWFILE}" ]]; then
          printf "${NEWFILE} \n"
-         # convert "$A" -auto-orient -strip -quality 30% -resize '1024x>' -resize 'x1024>' "${NEWFILE}"
-         convert "$A" -auto-orient -strip -quality 40% -resize '768x>' -resize 'x768>' "${NEWFILE}"
+         # magick "$A" -auto-orient -strip -quality 30% -resize '1024x>' -resize 'x1024>' "${NEWFILE}"
+         magick "$A" -auto-orient -strip -quality 40% -resize '768x>' -resize 'x768>' "${NEWFILE}"
          # apply meta data (will take longer)
          exiftool -overwrite_original -TagsFromFile "$A" "${NEWFILE}"
          touch -r "$A" "${NEWFILE}"
@@ -34,10 +36,10 @@ echo "Doing Art..."
 echo
 for DIR in $LIST; do
    echo $DIR
-   SRC="$HOME/Photos/Gallery/${DIR}"
+   SRC="${PHOTOS_SRC}/Gallery/${DIR}"
    DST="$HOME/DCIM/content/art--gallery/${DIR}"
    # rm -fr $DST/*.jpg
-   # resize_images
+   resize_images
 done
 
 LIST="album1 album2 album3 album4 babybooks cards certificates graduation misc originals transformers"
@@ -47,19 +49,19 @@ echo "Doing Scans..."
 echo
 for DIR in $LIST; do
    echo $DIR
-   SRC="$HOME/Photos/Scans/${DIR}"
+   SRC="${PHOTOS_SRC}/Scans/${DIR}"
    DST="$HOME/DCIM/content/scans/${DIR}"
    # rm -fr $DST/*.jpg
-   # resize_images
+   resize_images
 done
 
 export IFS=" "
 echo
 echo "Doing Photos..."
 echo
-for DIR in {2003..2024}; do
+for DIR in {2023..2024}; do
    echo $DIR
-   SRC="$HOME/Photos/${DIR}"
+   SRC="${PHOTOS_SRC}/${DIR}"
    DST="$HOME/DCIM/content/photos/${DIR}"
    # rm -fr $DST/*.jpg
    resize_images

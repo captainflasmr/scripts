@@ -1,5 +1,5 @@
 #!/bin/bash
-DIRS=$(find "/home/jdyer/MyMusicLibrary" -type d -printf '%p;')
+DIRS=$(find "/home/jdyer/nas/Music/MyMusicLibrary" -type d -printf '%p;')
 
 export IFS=";"
 

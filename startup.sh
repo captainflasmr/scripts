@@ -44,7 +44,8 @@ nm-applet --indicator &
 ydotoold --socket-perm 0777 --socket-path=/run/user/1000/.ydotool_socket &
 syncthing -no-browser -no-browser -home="/home/jdyer/.config/syncthing" &
 autotiling &
-udisksctl mount -b /dev/mmcblk0p1
+udisksctl mount -b /dev/mmcblk0p1 # SD Card
+udisksctl mount -b /dev/sda1 # Attached VM drive
 battery-monitor.sh &
 
 NUMPAD_CONNECTED=0

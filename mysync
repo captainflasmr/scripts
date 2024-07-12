@@ -45,21 +45,32 @@ case "$1" in
       ;;
 
    --photos)
-      SRC="$HOME/nas/Photos"
+      REMOTE_SRC="$HOME/nas/Photos"
 
-      declare -a DESTINATIONS=(
-         "/run/media/jdyer/6665-3063/Photos"
+      declare -a LOCAL_SRCS=(
+         "/run/media/jdyer/Backup/Photos"
       )
 
-      for DEST in "${DESTINATIONS[@]}"; do
-         if [[ -d "$DEST" ]]; then
-            echo "Syncing to $DEST..."
-            DORSYNC="${RSYNC}--exclude 'thumbnails-digikam.db' --exclude 'digikam4.db' --exclude 'similarity.db' --exclude 'recognition.db' \"$SRC/\" \"$DEST/\""
-            echo "$DORSYNC"
-            eval "$DORSYNC"
-            # do_sync "$DEST"
+      for LOCAL_SRC in "${LOCAL_SRCS[@]}"; do
+         if [[ -d "$LOCAL_SRC" ]]; then
+
+            RSYNC+="--exclude 'thumbnails-digikam.db' --exclude 'digikam4.db' --exclude 'similarity.db' --exclude 'recognition.db'"
+
+            if [[ $2 == "in" ]]; then
+               RSYNC+=" \"${REMOTE_SRC}/\" \"${LOCAL_SRC}/\""
+               echo "Syncing to ${REMOTE_SRC} -> ${LOCAL_SRC}..."
+            else
+               RSYNC+=" \"${LOCAL_SRC}/\" \"${REMOTE_SRC}/\""
+               echo "Syncing to ${LOCAL_SRC} -> ${REMOTE_SRC}..."
+            fi
+
+            echo
+            echo "Press <any key> to continue"
+            read -e RESPONSE
+
+            eval "$RSYNC"
          else
-            echo "$DEST not present."
+            echo "$LOCAL_SRC not present."
          fi
       done
       ;;

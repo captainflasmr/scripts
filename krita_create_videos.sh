@@ -30,7 +30,7 @@ for A in $DIRS; do
       if [[ ! -f "$PADDIR/$FILE" ]]; then
          echo "$A/$FILE"
          REGENVID=1
-         convert $FILE -resize 1280x720 -background black -gravity center \
+         magick $FILE -resize 1280x720 -background black -gravity center \
                  -extent 1280x720 "$PADDIR/$FILE"
       fi
    done

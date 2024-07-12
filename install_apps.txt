@@ -40,6 +40,9 @@ devede
 digikam
 discover
 dmenu
+dotnet-sdk
+dotnet-runtime
+drawio-desktop-appimage
 dunst
 easytag
 elisa
@@ -137,6 +140,7 @@ sof-firmware
 sox
 speedtest-cli
 swayr
+swig
 sxiv
 syncthing
 tesseract
@@ -152,6 +156,7 @@ ttf-droid
 tumbler
 udisks2
 unzip
+upscayl-bin
 ventoy
 veracrypt
 vi
@@ -196,5 +201,4 @@ wordnet-cli
 com.github.d4nj1.tlpui
 com.rafaelmardojai.Blanket
 org.gtk.Gtk3theme.Adwaita-dark
-org.upscayl.Upscayl
 ### END ###

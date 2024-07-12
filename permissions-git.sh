@@ -19,6 +19,8 @@ source/repos/dotfiles
 .config
 "
 
+LIST="source/repos/cigi-ccl_4_0"
+
 # create a git alias to revert permissions
 git config --global --add alias.permission-reset '!git diff -p -R --no-ext-diff --no-color --diff-filter=M | grep -E "^(diff|(old|new) mode)" --color=never | git apply'
 git config --global user.name "james@dyerdwelling.family"

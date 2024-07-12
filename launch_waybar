@@ -16,7 +16,7 @@ cleanup() {
 }
 
 # Setup a trap for SIGINT (Ctrl+C) and SIGTERM
-trap "cleanup" SIGINT SIGTERM
+# trap "cleanup" SIGINT SIGTERM
 
 start_waybar() {
     echo "Restarting waybar..."
@@ -27,21 +27,21 @@ start_waybar() {
 # Start waybar initially
 start_waybar
 
-echo "Watching for changes. Press Ctrl+C to stop."
+# echo "Watching for changes. Press Ctrl+C to stop."
 
-# Function to monitor changes in a directory
-monitor_directory() {
-    DIR=$1
-    while inotifywait -e attrib,create,modify,delete,move -qq "$DIR"; do
-        echo "Change detected in $DIR"
-        start_waybar
-    done
-}
+# # Function to monitor changes in a directory
+# monitor_directory() {
+#     DIR=$1
+#     while inotifywait -e attrib,create,modify,delete,move -qq "$DIR"; do
+#         echo "Change detected in $DIR"
+#         start_waybar
+#     done
+# }
 
-# Start monitoring each directory in the background
-for DIR in "${WATCH_DIRECTORIES[@]}"; do
-    monitor_directory "$DIR" &
-done
+# # Start monitoring each directory in the background
+# for DIR in "${WATCH_DIRECTORIES[@]}"; do
+#     monitor_directory "$DIR" &
+# done
 
-# Wait for any process to exit
-wait
+# # Wait for any process to exit
+# wait
