@@ -4,7 +4,11 @@
 *.lock*
 *.o
 *.socket
-*[cC]ache*
+.cache*
+Cache
+Cached*
+Code Cache
+http-cache
 *[tT]rash*
 *microsoft-edge*
 *~
