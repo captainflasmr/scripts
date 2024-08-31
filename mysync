@@ -11,6 +11,7 @@ function do_sync() {
 
 case "$1" in
    --music)
+
       SRC="$HOME/nas/Music/MyMusicLibrary"
 
       declare -a DESTINATIONS=(
@@ -18,6 +19,7 @@ case "$1" in
          "/run/media/jdyer/MusicLib/MyMusicLibrary"
          "/run/media/jdyer/PhoneSD/MyMusicLibrary"
          "/run/media/jdyer/6665-3063/MyMusicLibrary"
+         "/run/media/jdyer/Backup/MyMusicLibrary"
          "/run/media/jdyer/SPORT GO/Music/MyMusicLibrary"
       )
 
@@ -32,6 +34,7 @@ case "$1" in
       ;;
 
    --art)
+
       LOCAL_SRC="$HOME/DCIM/Art/Working/"
       REMOTE_SRC="$HOME/nas/OneDrive/Documents/Art/"
 
@@ -45,6 +48,7 @@ case "$1" in
       ;;
 
    --photos)
+
       REMOTE_SRC="$HOME/nas/Photos"
 
       declare -a LOCAL_SRCS=(
@@ -76,6 +80,7 @@ case "$1" in
       ;;
 
    --dvd)
+
       SRC="$HOME/nas/DVD"
 
       declare -a DESTINATIONS=(
