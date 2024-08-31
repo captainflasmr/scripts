@@ -1,23 +1,20 @@
 #!/bin/bash
 
-LIST="source/repos/wvkbd
-source/repos/qtdoc
-DCIM/Art/Content/ArtAssets
-DCIM/Art/Content/ArtRage
-DCIM/Art/Content/ArtRagePenTool
-DCIM/Art/Content/ArtRageTabletFriend
-DCIM/Art/Content/InfinitePainter
-DCIM/Art/Content/Krita
-DCIM/themes/hugo-bootstrap-gallery
-DCIM/themes/Hugo-Octopress
-DCIM/themes/hugo-theme-notrack
-DCIM/themes/hugo-xmag
-DCIM/themes/Mainroad
+LIST="source/repos/cigi-ccl_4_0
+source/repos/dotfiles
+source/repos/ewow
 source/repos/fd-find
 source/repos/old-ada-mode
-source/repos/dotfiles
+source/repos/scripts
+source/repos/selected-window-accent-mode
+source/repos/themes
+source/repos/wowee
+source/repos/wvkbd
+source/repos/xcompose
+source/repos/xkb-mode
+source/repos/xkeymacs
 .config
-"
+bin"
 
 LIST="source/repos/cigi-ccl_4_0"
 
