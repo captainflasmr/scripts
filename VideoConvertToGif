@@ -1,0 +1,8 @@
+#!/bin/bash
+source Common.sh
+for A in $FILES; do
+   pre
+   EXT=gif
+   NEWFILE="${BASEDIR}/${FILE_NO_EXT}.${EXT}"
+   convert_it_video "$A" -vf "fps=20,scale=800:-1:flags=lanczos" -loop 0 $NEWFILE
+done
