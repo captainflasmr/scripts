@@ -29,6 +29,7 @@ audacity
 awesome-terminal-fonts
 btop
 calcurse
+cdrdao
 cmake
 copyq
 cpupower
@@ -44,9 +45,10 @@ dotnet-sdk
 dotnet-runtime
 drawio-desktop-appimage
 dunst
+dvd+rw-tools
 easytag
 elisa
-emacs
+emacs-wayland
 exa
 fd
 feh
@@ -102,10 +104,12 @@ mako
 mb2md
 meld
 mp3info
+mplayer
 mpv
 ncdu
 neofetch
 nfs-utils
+ninja
 noto-fonts-emoji
 npm
 obs-studio
@@ -122,6 +126,7 @@ python-pillow
 python-pip
 python-pyqt5
 python-pysmbc
+python-pywal
 python-pywlroots
 python-reportlab
 qt5-wayland
@@ -132,6 +137,7 @@ retroarch-assets-xmb
 ripgrep
 rofi
 rust
+sccache
 scribus
 shotcut
 slurp
@@ -139,6 +145,7 @@ smbclient
 sof-firmware
 sox
 speedtest-cli
+subversion
 swayr
 swig
 sxiv
@@ -183,6 +190,7 @@ libretro-cap32-git
 makemkv
 mbsync
 mu
+omnisharp-roslyn-bin
 photocollage
 python-eyed3
 qt5-styleplugins
@@ -197,6 +205,7 @@ vscodium-bin
 waybar-module-pacman-updates-git
 wl-color-picker
 wordnet-cli
+xremap-wlroots-bin
 ### FLATPAK ###
 com.github.d4nj1.tlpui
 com.rafaelmardojai.Blanket

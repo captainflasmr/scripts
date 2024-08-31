@@ -32,10 +32,12 @@ get_repos "https://github.com/Vimux" "Mainroad"
 # others
 mkdir -p $HOME/source/repos
 cd $HOME/source/repos
-get_repos "git@github.com:captainflasmr" "arscript-mode cigi-ccl_4_0 dotfiles fd-find scripts selected-window-accent-mode xkb-mode"
-get_repos "https://github.com/tkurtbond" "old-ada-mode"
+get_repos "git@github.com:captainflasmr" "cigi-ccl_4_0 dotfiles fd-find old-ada-mode scripts selected-window-accent-mode wowee xkb-mode"
+# get_repos "https://github.com/tkurtbond" "old-ada-mode"
 get_repos "https://github.com/jjsullivan5196" "wvkbd"
 get_repos "https://github.com/kragen" "xcompose"
+get_repos "https://github.com/fujieda" "xkeymacs"
+get_repos "https://github.com/zk-phi" "ewow"
 
 echo
 echo "Ready to sync to local directories? : Press <any key> to continue"
