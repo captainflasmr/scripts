@@ -21,7 +21,19 @@ cleanup() {
 start_waybar() {
     echo "Restarting waybar..."
     killall waybar 2>/dev/null
-    waybar &
+    CONFIG_FILE="/home/jdyer/.config/WAYBAR"
+    CONFIG_GARUDA="/home/jdyer/.config/waybar_garuda"
+    CONFIG_JDYER="/home/jdyer/.config/waybar_jdyer"
+
+    if [[ ! -f $CONFIG_FILE ]]; then
+       echo $CONFIG_GARUDA > $CONFIG_FILE
+    fi
+
+    CURRENT_CONFIG=$(cat $CONFIG_FILE)
+
+    waybar -c $CURRENT_CONFIG/config -s $CURRENT_CONFIG/style.css &
+
+    # waybar &
 }
 
 # Start waybar initially
