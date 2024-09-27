@@ -27,6 +27,17 @@ function select_dir ()
    done
 }
 
+# a backup for just in case on very important files
+function simple_extra_backup ()
+{
+   echo "----------------------------------------"
+   echo "Simple Backup..."
+   echo "----------------------------------------"
+   rsync -rltsiPv --no-g --copy-links \
+         --size-only --modify-window=4 \
+         $HOME/DCIM/Camera/ $HOME/nas/Evie/Camera/
+}
+
 function tidy_up ()
 {
    TYPES="webp,jpg,jpeg,png,mp4,pdf"
@@ -40,7 +51,9 @@ function tidy_up ()
       fi
 
       for TYPE in $TYPES; do
+         # echo $TYPE
          FILES=$(find "$HOME/$DIR" -iname "*.$TYPE" -newer DATE -printf '%p;')
+         echo $FILES
          if [[ -n $FILES ]]; then
             source Common.sh "$FILES"
             for A in $FILES; do
@@ -50,7 +63,8 @@ function tidy_up ()
                   EXT=jpg
                   get_trunc_name
                   exiftool -orientation#=1 -overwrite_original_in_place "-FileModifyDate<DateTimeOriginal" "-FileModifyDate<CreateDate" "$A"
-                  convert_it "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' "$TRUNCNAME"
+                  # convert_it "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' "$TRUNCNAME"
+                  convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
                fi
             done
          fi
@@ -83,7 +97,6 @@ function do_it ()
     --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*' \
      --exclude-from=\"$HOME/bin/do_backup_excl\" "
         # --filter=':- .gitignore'
-
 
    if [[ ! -d "$SRC" ]]; then
       echo
@@ -141,6 +154,8 @@ function do_it ()
 
 function backup_home ()
 {
+   simple_extra_backup
+
    DRY=0
    INC=1
    TRASH=0
