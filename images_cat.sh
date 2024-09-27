@@ -20,7 +20,7 @@ function resize_images() {
          if [[ ! -f "${NEWFILE}" ]]; then
             # printf "$A -> ${FILE_NO_EXT}.${EXT} $key\n"
             printf "$A -> ${NEWFILE}\n"
-            convert "$A" -auto-orient -strip -quality 30% -resize '1024x>' -resize 'x1024>' "${NEWFILE}"
+            magick "$A" -auto-orient -strip -quality 30% -resize '1024x>' -resize 'x1024>' "${NEWFILE}"
             touch -r "$A" "${NEWFILE}"
          fi
       done
@@ -34,9 +34,7 @@ echo "Doing Art..."
 echo
 for DIR in $LIST; do
    echo $DIR
-   SRC="$HOME/Photos/Gallery/${DIR}"
-   # DST="$HOME/DCIM/content/art--gallery/${DIR}"
-   # DST="/run/media/jdyer/6665-3063/img-cat"
+   SRC="/run/media/jdyer/Backup/Photos/Gallery/${DIR}"
    DST="/home/jdyer/DCIM/content/tagged"
    # rm -fr $DST/*.jpg
    # resize_images
@@ -49,9 +47,7 @@ echo "Doing Scans..."
 echo
 for DIR in $LIST; do
    echo $DIR
-   SRC="$HOME/Photos/Scans/${DIR}"
-   # DST="$HOME/DCIM/content/scans/${DIR}"
-   # DST="/run/media/jdyer/6665-3063/img-cat"
+   SRC="/run/media/jdyer/Backup/Photos/Scans/${DIR}"
    DST="/home/jdyer/DCIM/content/tagged"
    # rm -fr $DST/*.jpg
    # resize_images
@@ -61,11 +57,9 @@ export IFS=" "
 echo
 echo "Doing Photos..."
 echo
-for DIR in {2024..2024}; do
+for DIR in {2003..2024}; do
    echo $DIR
-   SRC="$HOME/Photos/${DIR}"
-   # DST="$HOME/DCIM/content/photos/${DIR}"
-   # DST="/run/media/jdyer/6665-3063/img-cat"
+   SRC="/run/media/jdyer/Backup/Photos/${DIR}"
    DST="/home/jdyer/DCIM/content/tagged"
    # rm -fr $DST/*.jpg
    resize_images
