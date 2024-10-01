@@ -102,6 +102,18 @@ function convert_it () {
    cp -f --preserve "$TMP.$EXT" "$LAST"
 }
 
+function convert_it_copy () {
+   ARGS="${@: 2:$#-2}"
+   FIRST="${@: 1:1}"
+   LAST="${@: -1}"
+
+   magick "$FIRST" $ARGS "$TMP.$EXT"
+   exiftool -overwrite_original_in_place -TagsFromFile "$FIRST" "$TMP.$EXT"
+   touch -r "$FIRST" "$TMP.$EXT"
+   # trash-put "$FIRST"
+   cp -f --preserve "$TMP.$EXT" "$LAST"
+}
+
 function convert_it_gan () {
    ARGS="${@: 2:$#-2}"
    FIRST="${@: 1:1}"
