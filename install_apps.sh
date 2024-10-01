@@ -81,7 +81,12 @@ if command -v $AUR_HELPER &> /dev/null ; then
    echo
    LIST=$(awk '/### PACMAN ###/,/### AUR ###/' "$COMBINED_LIST" | sed '/### PACMAN ###\|### AUR ###/d')
    for file in $LIST; do
-      if ! pacman -Qi $file &> /dev/null; then
+      if [[ $file == \#* ]]; then
+         echo "----------------------------------------"
+         echo "PKG : SKIPPING $file because it has been commented out"
+         echo "----------------------------------------"
+         continue
+      elif ! pacman -Qi $file &> /dev/null; then
          echo "----------------------------------------"
          echo "PKG : Doing $file"
          echo "----------------------------------------"
@@ -100,7 +105,12 @@ if command -v $AUR_HELPER &> /dev/null ; then
    echo
    LIST=$(awk '/### AUR ###/,/### FLATPAK ###/' "$COMBINED_LIST" | sed '/### AUR ###\|### FLATPAK ###/d')
    for file in $LIST; do
-      if ! pacman -Qi $file &> /dev/null; then
+      if [[ $file == \#* ]]; then
+         echo "----------------------------------------"
+         echo "PKG : SKIPPING $file because it has been commented out"
+         echo "----------------------------------------"
+         continue
+      elif ! pacman -Qi $file &> /dev/null; then
          echo "----------------------------------------"
          echo "AUR : Doing $file"
          echo "----------------------------------------"
@@ -122,8 +132,15 @@ if command -v flatpak &>/dev/null; then
    echo
    LIST=$(awk '/### FLATPAK ###/,/### END ###/' "$COMBINED_LIST" | sed '/### FLATPAK ###\|### END ###/d')
    echo "$LIST" | while read -r file; do
-      echo "Installing $file ..."
-      flatpak install -y "$file"
-      echo "-------------------------"
+      if [[ $file == \#* ]]; then
+         echo "----------------------------------------"
+         echo "PKG : SKIPPING $file because it has been commented out"
+         echo "----------------------------------------"
+         continue
+      else
+        echo "Installing $file ..."
+        flatpak install -y "$file"
+        echo "-------------------------"
+      fi
    done
 fi

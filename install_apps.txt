@@ -48,24 +48,24 @@ dunst
 dvd+rw-tools
 easytag
 elisa
-emacs-wayland
+#emacs-wayland
 exa
 fd
-feh
-filelight
+#feh
+#filelight
 firefox
 fish
 flatpak
 font-manager
 foot
-fuzzel
-gammastep
+#fuzzel
+#gammastep
 gcc-ada
 gdb
 gimp
 gimp-plugin-gmic
 gnome-keyring
-gnome-terminal
+#gnome-terminal
 gnuplot
 gparted
 grim
@@ -74,7 +74,7 @@ gvfs
 gvfs-mtp
 gvfs-nfs
 gvfs-smb
-gwenview
+#gwenview
 hugo
 hunspell
 hunspell-en_gb
@@ -82,7 +82,7 @@ id3v2
 inotify-tools
 jdk21-openjdk
 k3b
-kcolorchooser
+#kcolorchooser
 kdenlive
 keepassxc
 kleopatra
@@ -99,15 +99,15 @@ libxcrypt-compat
 losslesscut-bin
 lsof
 mailutils
-maim
-mako
+#maim
+#mako
 mb2md
 meld
 mp3info
 mplayer
 mpv
 ncdu
-neofetch
+#neofetch
 nfs-utils
 ninja
 noto-fonts-emoji
@@ -118,10 +118,11 @@ onboard
 pandoc
 pass
 pavucontrol
+pcmanfm
 perl-image-exiftool
 perl-rename
 polkit-gnome
-polybar
+#polybar
 python-pillow
 python-pip
 python-pyqt5
@@ -131,7 +132,7 @@ python-pywlroots
 python-reportlab
 qt5-wayland
 qtcreator
-redshift
+#redshift
 retroarch
 retroarch-assets-xmb
 ripgrep
@@ -148,7 +149,7 @@ speedtest-cli
 subversion
 swayr
 swig
-sxiv
+#sxiv
 syncthing
 tesseract
 tesseract-data-eng
@@ -209,5 +210,5 @@ xremap-wlroots-bin
 ### FLATPAK ###
 com.github.d4nj1.tlpui
 com.rafaelmardojai.Blanket
-org.gtk.Gtk3theme.Adwaita-dark
+#org.gtk.Gtk3theme.Adwaita-dark
 ### END ###
