@@ -1,0 +1,13 @@
+#! /bin/bash
+# prepare images for email sending
+DATE=`date +%Y%m%d%H`
+
+source Common.sh
+for A in $FILES; do
+   pre
+   EXT=jpg
+   # NEWFILE="${BASEDIR}/${FILE_NO_EXT}.${EXT}"
+   NEWFILE="${HOME}/Pictures/${DATE}/${FILE_NO_EXT}.${EXT}"
+   mkdir -p "${HOME}/Pictures/${DATE}"
+   convert_it_copy "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' $NEWFILE
+done
