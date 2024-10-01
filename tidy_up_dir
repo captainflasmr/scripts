@@ -1,0 +1,44 @@
+#!/bin/bash
+
+IFS=,
+
+function tidy_up ()
+{
+   TYPES="webp,jpg,jpeg,png,mp4,pdf"
+   DIRS="$PWD"
+
+   for DIR in $DIRS; do
+
+      echo $DIR
+
+      cd "$DIR" || exit
+
+      if [[ ! -f DATE ]]; then
+         touch --date "1976-04-03" DATE
+      fi
+
+      for TYPE in $TYPES; do
+         echo $TYPE
+         FILES=$(find "$DIR" -iname "*.$TYPE" -newer DATE -printf '%p;')
+         echo $FILES
+         if [[ -n $FILES ]]; then
+            source Common.sh "$FILES"
+            for A in $FILES; do
+               echo "$A"
+               pre
+               if [[ $TYPE != "mp4" ]]; then
+                  EXT=jpg
+                  get_trunc_name
+                  exiftool -orientation#=1 -overwrite_original_in_place "-FileModifyDate<DateTimeOriginal" "-FileModifyDate<CreateDate" "$A"
+                  # convert_it "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' "$TRUNCNAME"
+                  # convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
+                  convert_it "$A" -auto-orient -strip -quality 50% "$A"
+               fi
+            done
+         fi
+      done
+      touch DATE
+   done
+}
+
+tidy_up
