@@ -1,0 +1,10 @@
+#!/bin/bash
+base_dir="$HOME/DCIM/content/tagged"
+
+# Iterate over each subdirectory
+for dir in $(find "$base_dir" -type d); do
+    # Check if index.md exists in the current subdirectory
+    if [ ! -f "$dir/index.md" ]; then
+        echo "Missing index.md in directory: $dir"
+    fi
+done
