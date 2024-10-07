@@ -2,7 +2,7 @@
 source Common.sh
 for A in $FILES; do
    pre
-   exiftool -all= "-CreateDate<FileModifyDate" "-DateTimeOriginal<FileModifyDate" "$A"
+   exiftool -all= -overwrite_original "-CreateDate<FileModifyDate" "-DateTimeOriginal<FileModifyDate" "$A"
    # exiftool -overwrite_original -all= "-CreateDate<FileModifyDate" "-DateTimeOriginal<FileModifyDate" -tagsFromFile @ "$A"
    # exiftool -all= -overwrite_original_in_place "-CreateDate<FileModifyDate" "-DateTimeOriginal<FileModifyDate" "$A"
 done
