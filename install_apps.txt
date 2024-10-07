@@ -133,6 +133,7 @@ python-reportlab
 qt5-wayland
 qtcreator
 #redshift
+recoll
 retroarch
 retroarch-assets-xmb
 ripgrep
