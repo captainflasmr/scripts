@@ -21,8 +21,8 @@ wal -i ~/.last_wallpaper.jpg -q -n
 colors=$(cat ~/.cache/wal/colors.json)
 
 # Extracting colors
-fg=$(echo $colors | jq -r '.colors.color7')
-bg=$(echo $colors | jq -r '.colors.color8')
+fg=$(echo $colors | jq -r '.special.foreground')
+bg=$(echo $colors | jq -r '.special.background')
 
 # Update sway window decorations
 swaymsg client.focused "$fg" "$fg" "$fg" "$fg" "$fg"
