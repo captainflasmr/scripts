@@ -2,7 +2,7 @@
 KEYBOARD_FILE=$HOME/KEYBOARD
 
 if ! pgrep "^wvkbd-mobintl$" >/dev/null; then
-   $HOME/repos/wvkbd/wvkbd-mobintl &
+   $HOME/source/repos/wvkbd/wvkbd-mobintl &
    touch $KEYBOARD_FILE
    sleep 0.1
 fi
