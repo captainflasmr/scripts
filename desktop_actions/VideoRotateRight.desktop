@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=VideoRotateRight
+Name[cc]=VideoRotateRight
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=video/*;
+Exec=ServiceConsole VideoRotateRight %F

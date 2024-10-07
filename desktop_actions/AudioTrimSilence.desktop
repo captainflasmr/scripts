@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=AudioTrimSilence
+Name[cc]=AudioTrimSilence
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=audio/*;
+Exec=ServiceConsole AudioTrimSilence %F

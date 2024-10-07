@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=Picture2pdf
+Name[cc]=Picture2pdf
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=image/*;
+Exec=ServiceConsole Picture2pdf %F

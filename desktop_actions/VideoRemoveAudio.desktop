@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=VideoRemoveAudio
+Name[cc]=VideoRemoveAudio
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=video/*;
+Exec=ServiceConsole VideoRemoveAudio %F

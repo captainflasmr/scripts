@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=PictureConvert
+Name[cc]=PictureConvert
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=image/*;
+Exec=ServiceConsole PictureConvert %F

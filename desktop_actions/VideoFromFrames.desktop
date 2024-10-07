@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=VideoFromFrames
+Name[cc]=VideoFromFrames
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=video/*;
+Exec=ServiceConsole VideoFromFrames %F

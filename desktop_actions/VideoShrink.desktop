@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=VideoShrink
+Name[cc]=VideoShrink
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=video/*;
+Exec=ServiceConsole VideoShrink %F

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=VideoReverse
+Name[cc]=VideoReverse
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=video/*;
+Exec=ServiceConsole VideoReverse %F

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=AudioNormalise
+Name[cc]=AudioNormalise
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=audio/*;
+Exec=ServiceConsole AudioNormalise %F

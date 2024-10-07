@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=PictureRotateLeft
+Name[cc]=PictureRotateLeft
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=image/*;
+Exec=ServiceConsole PictureRotateLeft %F

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=TouchABit
+Name[cc]=TouchABit
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=all/all;
+Exec=ServiceConsole TouchABit %F

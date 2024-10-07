@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=PictureAutoColour
+Name[cc]=PictureAutoColour
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=image/*;
+Exec=ServiceConsole PictureAutoColour %F

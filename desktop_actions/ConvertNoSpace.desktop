@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=ConvertNoSpace
+Name[cc]=ConvertNoSpace
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=all/all;
+Exec=ServiceConsole ConvertNoSpace %F

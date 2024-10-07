@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=OtherTagDate
+Name[cc]=OtherTagDate
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=all/all;
+Exec=ServiceConsole OtherTagDate %F

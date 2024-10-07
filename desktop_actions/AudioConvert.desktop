@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=AudioConvert
+Name[cc]=AudioConvert
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=audio/*;
+Exec=ServiceConsole AudioConvert %F
