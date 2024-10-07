@@ -33,6 +33,7 @@ http-cache
 .local/share/wallpapers/
 .local/share/waydroid
 .local/share/webkitgtk/databases
+.recoll
 .stfolder
 .stversions
 .thumbnails
