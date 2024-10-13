@@ -2,139 +2,132 @@
 #+AUTHOR: James Dyer
 
 * Introduction
+
 This repository contains a comprehensive collection of utility scripts and tools for various purposes including audio and video processing, image manipulation, system management, and more.
 
-* Directory Structure
-Below is an overview of the scripts and their functionalities.
+Below is a brief description of each script and its functionality.
 
-** Audio Processing
-Scripts for handling audio files.
+** Audio Processing Scripts
 
-- =AudioConvert=: Converts audio files between different formats.
-- =AudioInfo=: Retrieves metadata information from audio files.
-- =AudioNormalise=: Normalizes audio files to a standard volume level.
-- =AudioTrimSilence=: Trims silence from the beginning and end of audio files.
+- *AudioConvert*: Converts audio files between different formats.
+- *AudioInfo*: Retrieves and displays detailed metadata and information about an audio file.
+- *AudioNormalise*: Normalizes the volume of an audio file.
+- *AudioTrimSilence*: Trims unnecessary silence from the beginning and end of an audio file.
+- *OtherTagDate*: Modifies or tags audio files with specific dates and metadata.
 
-** Image Processing
-Scripts for various image manipulation tasks.
+** Video Processing Scripts
 
-- =Picture2pdf=: Converts images to PDF.
-- =PictureAutoColour=: Automatically adjusts color in images.
-- =PictureConvert=: Converts images between different formats.
-- =PictureCorrect=: Corrects images for better quality.
-- =PictureCrop=: Crops images to specified dimensions.
-- =PictureCrush=: Compresses images to reduce file size.
-- =PictureFrompdf=: Extracts images from PDF files.
-- =PictureGetText=: Extracts text from images.
-- =PictureInfo=: Retrieves metadata information from images.
-- =PictureMontage=: Creates a montage of multiple images.
-- =PictureOrganise=: Organizes images into directories.
-- =PictureOrientation=: Fixes image orientation based on metadata.
-- =PictureRotateFlip=: Rotates and flips images.
-- =PictureRotateLeft=: Rotates images 90 degrees to the left.
-- =PictureRotateRight=: Rotates images 90 degrees to the right.
-- =PictureScale=: Scales images to new dimensions.
-- =PictureTag=: Adds tags to images.
-- =PictureTagRename=: Renames tags in images.
-- =PictureUpdateToCreateDate=: Updates image metadata to creation dates.
-- =PictureUpscale=: Upscales images to higher resolution.
+- *VideoConcat*: Concatenates multiple video files into one.
+- *VideoConvert*: Converts videos between different formats.
+- *VideoConvertToGif*: Converts a video file into a GIF.
+- *VideoCut*: Trims a video file by cutting it to a specific length.
+- *VideoDouble*: Doubles the speed of a video.
+- *VideoExtractAudio*: Extracts the audio track from a video file.
+- *VideoExtractFrames*: Extracts individual frames from a video file.
+- *VideoFilter*: Applies filters to a video (e.g., grayscale).
+- *VideoFromFrames*: Converts a series of image frames into a video.
+- *VideoInfo*: Displays metadata and information about a video file.
+- *VideoRemoveAudio*: Removes the audio track from a video.
+- *VideoRemoveFlips*: Removes accidental rotation or flipping from a video.
+- *VideoReplaceAudio*: Replaces the audio track of a video.
+- *VideoReplaceVideoAudio*: Replaces both the video and audio tracks.
+- *VideoRescale*: Rescales or changes the resolution of a video.
+- *VideoReverse*: Reverses the playback of a video.
+- *VideoRotate*: Rotates a video by a specified angle.
+- *VideoRotateLeft*: Rotates a video 90 degrees to the left.
+- *VideoRotateRight*: Rotates a video 90 degrees to the right.
+- *VideoShrink*: Reduces the file size of a video.
+- *VideoSlowDown*: Slows down the playback speed of a video.
+- *VideoSpeedUp*: Speeds up the playback of a video.
+- *VideoZoom*: Applies a zoom effect to a video.
 
-** Video Processing
-Scripts for handling video files.
+** Image Processing Scripts
 
-- =VideoConcat=: Concatenates multiple video files.
-- =VideoConvert=: Converts video files between different formats.
-- =VideoCut=: Cuts segments from video files.
-- =VideoDouble=: Doubles the speed of video files.
-- =VideoExtractAudio=: Extracts audio from video files.
-- =VideoExtractFrames=: Extracts frames from video files.
-- =VideoFilter=: Applies filters to video files.
-- =VideoFromFrames=: Creates video from image frames.
-- =VideoInfo=: Retrieves metadata information from video files.
-- =VideoRemoveAudio=: Removes audio from video files.
-- =VideoRemoveFlips=: Removes flipped scenes from video files.
-- =VideoReplaceAudio=: Replaces audio in video files.
-- =VideoReplaceVideoAudio=: Replaces both video and audio tracks.
-- =VideoRescale=: Rescales video to new dimensions.
-- =VideoReverse=: Reverses video files.
-- =VideoRotate=: Rotates video files.
-- =VideoRotateLeft=: Rotates video files 90 degrees to the left.
-- =VideoRotateRight=: Rotates video files 90 degrees to the right.
-- =VideoShrink=: Shrinks the size of video files.
-- =VideoSlowDown=: Slows down video files.
-- =VideoSpeedUp=: Speeds up video files.
-- =VideoZoom=: Applies zoom effects to video files.
+- *Picture2pdf*: Converts images to a PDF file.
+- *PictureAutoColour*: Automatically adjusts the colors and contrast of an image.
+- *PictureConvert*: Converts image files between different formats.
+- *PictureCorrect*: Corrects brightness, contrast, and other properties of an image.
+- *PictureCrop*: Crops an image to a specific shape or size.
+- *PictureCrush*: Optimizes and compresses images to reduce file size.
+- *PictureEmail*: Prepares and resizes images for email attachments.
+- *PictureFrompdf*: Extracts images from a PDF file.
+- *PictureGetText*: Performs OCR (optical character recognition) on an image to extract text.
+- *PictureInfo*: Shows metadata and detailed information about an image.
+- *PictureMontage*: Creates a montage or collage from multiple images.
+- *PictureOrganise*: Renames or reorganizes a collection of images.
+- *PictureOrientation*: Adjusts the orientation of images based on metadata.
+- *PictureRotateFlip*: Rotates or flips an image.
+- *PictureRotateLeft*: Rotates an image 90 degrees to the left.
+- *PictureRotateRight*: Rotates an image 90 degrees to the right.
+- *PictureScale*: Resizes an image based on given dimensions or scale factor.
+- *PictureTag*: Tags an image with relevant metadata.
+- *PictureTagRename*: Renames image files based on their metadata tags.
+- *PictureUpdateFromCreateDate*: Updates image metadata from its creation date.
+- *PictureUpdateToCreateDate*: Updates the image's creation date from the metadata.
+- *PictureUpscale*: Increases the resolution of an image without significant quality loss.
 
-** System Management
-Scripts for managing system settings and configurations.
+** Miscellaneous Multimedia Scripts
 
-- =Common.sh=: Common functions and variables used across various scripts.
-- =ServiceConsole=: Manages service consoles.
-- =install.sh=: Installs necessary applications and packages.
-- =install_apps.sh=: Installs specified applications.
-- =install_apps.txt=: List of applications to be installed.
-- =install_latest.sh=: Displays the latest installed packages.
-- =install_remote.sh=: Installs applications on a remote system.
-- =battery-monitor.sh=: Monitors battery status.
-- =cpu-speed.sh=: Checks CPU speed.
-- =crypt.sh=: Handles encryption tasks.
-- =do_backup=: Performs system backups.
-- =do_backup_excl=: List of exclusions for system backups.
-- =do_backup_incl=: List of inclusions for system backups.
-- =emacs_pkgs_update.sh=: Updates Emacs packages.
-- =keyboard-reset.sh=: Resets keyboard settings.
-- =keymap-load.sh=: Loads keymap configurations.
-- =keymap-monitor.sh=: Monitors keymap configurations.
-- =keymap-sticky-generate.sh=: Generates sticky keymap configurations.
-- =keymap-toggle.sh=: Toggles between different keymaps.
-- =launch_polybar=: Launches Polybar.
-- =launch_waybar=: Launches Waybar.
-- =led-monitor.sh=: Monitors LED status.
-- =permissions-git.sh=: Manages file permissions in Git repositories.
-- =permissions-key.sh=: Manages file permissions for keys.
-- =powermenu.sh=: Displays power menu.
-- =screen-record-check-status.sh=: Checks screen recording status.
-- =screen-record.sh=: Starts screen recording.
-- =screenshot.sh=: Takes screenshots.
-- =screenshot_wayland.sh=: Takes screenshots in Wayland sessions.
-- =screenshot_x11.sh=: Takes screenshots in X11 sessions.
-- =startup.sh=: Runs startup tasks.
-- =startup_numpad.sh=: Runs startup tasks for numpad.
-- =startup_root.sh=: Runs startup tasks as root.
-- =sway-print-tree.sh=: Prints Sway window manager tree.
-- =switch_waybar.sh=: Switches Waybar configurations.
-- =tag_image_out.sh=: Tags images for output.
-- =tag_info.sh=: Retrieves tag information from files.
-- =tag_remove_meta.sh=: Removes metadata tags from files.
-- =tag_time_correct.sh=: Corrects timestamps in tags.
-- =tag_video_out.sh=: Tags videos for output.
-- =thumbnails-reset.sh=: Resets thumbnails.
-- =toggle_rofi.sh=: Toggles Rofi launcher.
-- =toggle_waybar.sh=: Toggles Waybar visibility.
-- =toggle_wlr_keyboard.sh=: Toggles Wayland keyboard settings.
-- =toggle_x11_keyboard.sh=: Toggles X11 keyboard settings.
-- =upall.sh=: Updates all scripts and configurations.
-- =update_all.sh=: Updates all packages and configurations.
-- =updatewal-styli.sh=: Updates wallpaper stylings.
-- =updatewal-swww.sh=: Updates wallpaper styles for Swww.
-- =wallpaper_change.sh=: Changes the desktop wallpaper.
-- =wayland-list-apps.sh=: Lists applications running in Wayland.
-- =webpage_crawl.sh=: Crawls and retrieves webpages.
+- *ConvertNoSpace*: Converts filenames by removing or replacing spaces.
+- *StegHide*: Hides or extracts information from media files using steganography.
+- **_tag_image_in.sh**: Adds tags to an image.
+- *tag_image_out.sh*: Removes tags from an image.
+- *tag_info.sh*: Displays metadata tags of media files.
+- *tag_remove_meta.sh*: Removes metadata from media files.
+- *tag_time_correct.sh*: Corrects timestamp metadata in images or videos.
+- *tag_video_out.sh*: Removes tags from a video file.
+
+** System and Utility Scripts
+
+- *battery-monitor.sh*: Monitors the system's battery status and sends notifications.
+- *cpu-speed.sh*: Displays the current speed of the CPU.
+- *desktop_actions*: A set of desktop shortcut configurations for common multimedia tasks.
+- *do_backup*: Backs up specific files or directories.
+- *download_video.sh*: Downloads videos from web sources.
+- *install.sh*: Installs essential scripts or packages.
+- *install_apps.sh*: Installs a list of applications defined in =install_apps.txt=.
+- *keyboard-reset.sh*: Resets the keyboard layout or keymap settings.
+- *keymap-load.sh*: Loads a predefined keymap.
+- *led-monitor.sh*: Monitors and controls LED devices on the system.
+- *mysync*: A personal synchronization script for syncing files.
+- *screen-record.sh*: Starts recording the screen.
+- *toggle_waybar.sh*: Toggles the visibility of the Waybar system monitor.
+- *sway-print-tree.sh*: Prints the tree structure of the Sway window manager layout.
+- *wallpaper_change.sh*: Changes the desktop wallpaper.
+- *webpage_crawl.sh*: Crawls a webpage to download resources or content.
+
+** Backup Scripts
+
+- *do_backup_excl*: Backs up files, excluding specified directories.
+- *do_backup_incl*: Backs up specific files or directories based on inclusion rules.
+
+** Installation Scripts
+
+- *install_remote.sh*: Installs packages or scripts from a remote source.
+- *install_latest.sh*: Installs the latest versions of preset applications.
 
 ** Miscellaneous Scripts
-Other useful scripts for various tasks.
 
-- =AudioConvert= - =webpage_crawl.sh=: Internet and webpage crawling script.
-- =images.sh=: Image processing script.
-- =images_cat.sh=: Concatenates image files.
-- =images_output_cat.sh=: Outputs concatenated image files.
-- =count.sh=: Counts specific items.
-- =download_video.sh=: Downloads video from the internet.
-- =krita_create_videos.sh=: Creates videos using Krita.
-- =krita_transfer_videos.sh=: Transfers videos created using Krita.
-- =music_cover_art.sh=: Manages cover art for music files.
-- =my-generate-etags.sh=: Generates etags for projects.
-- =mysync=: Synchronizes various files and directories.
-- =off=: Miscellaneous off script.
-- =rff=: Random file-related functions.
-- =screen-record.sh=
+- *off*: A utility to quickly power off or suspend the system.
+- *permissions-git.sh*: Fixes permissions issues for Git repositories.
+- *permissions-key.sh*: Adjusts permissions for private keys.
+- *screenshot.sh*: Takes a screenshot of the screen.
+- *startup.sh*: Configuration for programs or settings that run on startup.
+- *thumbnails-reset.sh*: Resets thumbnail caches for images.
+
+** Desktop Action Shortcuts (.desktop files)
+
+These =.desktop= files provide quick shortcuts for multimedia tasks such as converting audio, trimming silence, resizing images, etc., to integrate into desktop environments.
+
+** Scripts for Creating Videos
+
+- *krita_create_videos.sh*: Creates video files from Krita projects.
+- *images.sh*: Processes a batch of image files.
+- *images_cat.sh*: Concatenates image files.
+- *images_output_cat.sh*: Outputs concatenated image results as files.
+- *videos.sh*: Processes a batch of video files.
+
+** Desktop Specific Scripts
+
+- *launch_waybar*: Starts or restarts Waybar, a system monitoring bar for Wayland.
+- *switch_waybar.sh*: Toggles visibility between different Waybar configurations.
