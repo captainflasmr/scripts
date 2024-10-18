@@ -50,6 +50,7 @@ autotiling &
 udisksctl mount -b /dev/mmcblk0p1 # SD Card
 udisksctl mount -b /dev/sda1 # Attached VM drive
 battery-monitor.sh &
+emacs --daemon
 
 NUMPAD_CONNECTED=0
 KEYBOARD_CONNECTED=0
