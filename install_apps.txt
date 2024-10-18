@@ -48,7 +48,7 @@ dunst
 dvd+rw-tools
 easytag
 elisa
-#emacs-wayland
+emacs-wayland
 exa
 fd
 #feh
