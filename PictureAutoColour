@@ -8,4 +8,13 @@ for A in $FILES; do
    GIMPCMD="gimp -i -b '(batch-gimp \"$A\" 5.0 1.0 0)' -b '(gimp-quit 0)'"
    eval $GIMPCMD
    rm -f "$TMP"
+   # convert_it "$A" -auto-level -auto-gamma "$A"
+   # convert_it "$A" -contrast-stretch 1%x1% "$A"
+   # convert_it "$A" -normalize "$A"
+   # gmic "$A" -normalize 0,255 -o "$A"
+   # gmic "$A" -rgb2hsl -sh[0] +10 -hsl2rgb -o "$A"
+   # gmic "$A" -fx_temperature,-2000 -o "$A"
+   # gmic "$A" -apply_colorbalance[0] -30,-30,20 -o "$A"
+   # gegl "$A" -o "$A" -- gegl:normalize gegl:auto-white-balance
+   # darktable-cli "$A" "$A" --style auto-color
 done
