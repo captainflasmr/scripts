@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Usage: ./split_image.sh input_image number_of_splits
+
+source Common.sh
+for A in $FILES; do
+   pre
+   echo "Doing $A"
+   INPUT_IMAGE=$A # Input image file
+   NUM_SPLITS=3 # Number of horizontal splits
+
+   # Extract file name without path and extension using basename and parameter expansion
+   FILENAME=$(basename "$INPUT_IMAGE")
+   OUTPUT_PREFIX="${FILENAME%.*}"
+
+   # Get image dimensions
+   WIDTH=$(identify -format "%w" "$INPUT_IMAGE")
+   HEIGHT=$(identify -format "%h" "$INPUT_IMAGE")
+
+   # Calculate the width of each slice
+   SLICE_WIDTH=$((WIDTH / NUM_SPLITS))
+
+   # Loop through the splits and generate each slice
+   for ((i=0; i<NUM_SPLITS; i++)); do
+      OFFSET_X=$((i * SLICE_WIDTH))
+
+      # Slice the image: adjust x-offset and width, keep full height.
+      magick "$INPUT_IMAGE" -crop "${SLICE_WIDTH}x${HEIGHT}+${OFFSET_X}+0" "${OUTPUT_PREFIX}_${i}.png"
+
+      echo "Generated: ${OUTPUT_PREFIX}_${i}.png"
+   done
+done
