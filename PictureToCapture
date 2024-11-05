@@ -1,0 +1,7 @@
+#!/bin/bash
+# Capture gallery from files passed in through $FILE as semicolon-separated
+source Common.sh
+
+emacsclient -c --eval "(progn
+  (load \"/home/jdyer/.emacs.d/gallery.el\")
+  (my/external-org-capture-blog-with-gallery \"$FILES\"))"
