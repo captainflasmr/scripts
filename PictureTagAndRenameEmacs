@@ -1,0 +1,11 @@
+#!/bin/bash
+# Tag files selected in file explorer, going through Emacs
+source Common.sh
+
+emacsclient -c --eval "(progn
+  (load \"/home/jdyer/.emacs.d/menu.el\")
+  (my/dwim-convert-with-selection-files-command \"$FILES\" \"PictureTag\"))"
+
+emacsclient -c --eval "(progn
+  (load \"/home/jdyer/.emacs.d/menu.el\")
+  (my/dwim-convert-with-selection-files-command \"$FILES\" \"PictureTagRename\"))"
