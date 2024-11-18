@@ -1,88 +1,64 @@
 #!/bin/bash
+
+# Declare an associative array
 declare -A array
 
+# Source external script Common.sh
 source Common.sh
 
-# art art@creatures
+# Initialize variables
+tagCat=""
+IFS=";" read -r tagList files <<< "$FILES"
+tags=("$tagList")
 
-# echo "input tags - one@number two one"
-# read -e tags
+# Replace '@' by space, de-duplicate and join with ';' again to get unique keywords.
+uniqKeywords=$(echo "${tags//@/ }" | tr ' ' '\n' | sort -u | tr '\n' ';' | xargs)
 
-# tags="one@number two one"
+# Split tagList into hierarchical categories and populate associative array.
+for item in "${tags[@]}"; do
+    top=${item%@*}
+    bot=${item#*@}
+    if [[ "$top" != "$bot" ]]; then
+        array[$top]+=" $bot"
+    else
+        array[$top]+=""
+    fi
+done
 
-# keyw=${tags//@/ } # one number two one
-# keyw=$(echo $keyw | sed 's/ /\n/g' | sort | uniq | tr '\n' ';' | xargs) # one number two
+# Build XML structure for categories.
+tagCat+="<Categories>"
+for item in "${!array[@]}"; do
+    tagCat+="<Category Assigned=\"1\">$item"
+    for index in ${array["$item"]}; do
+        tagCat+="<Category Assigned=\"1\">$index</Category>"
+    done
+    tagCat+="</Category>"
+done
+tagCat+="</Categories>"
 
-# echo "input keyw - one number two"
-# read -e keyw
+# Now loop over each file in the list and apply tags.
+IFS=";"
+for A in $files; do
+    if [[ -n "$A" ]]; then
+        # Modify tags and keywords by replacing specific characters.
+        fileTags="${tagList// /,}"
+        fileTags="${fileTags//@/\/}"
 
-# keyw="one number two"
+        if [[ -n "$fileTags" ]]; then
+            echo "Processing file: $A"
+            echo "Tags: $fileTags"
+            echo "Keywords: $uniqKeywords"
 
-# echo "tags : $tags : keyw : $keyw"
-
-ftt=0
-
-# for A in $FILES; do
-#    echo $A
-# done
-# exit
-
-for A in $FILES; do
-   if [[ $ftt == 0 ]]; then
-      echo "ftt"
-      gtags=$A
-      gkeyw=${gtags//@/ } # one number two one
-      gkeyw=$(echo $gkeyw | sed 's/ /\n/g' | sort | uniq | tr '\n' ';' | xargs) # one number two
-      ftt=1
-   else
-      export IFS=" "
-      tags=$gtags
-      keyw=$gkeyw
-      echo "tags : $tags : keyw : $keyw"
-      for item in $tags; do
-         top=${item%@*}
-         bot=${item#*@}
-         if [[ "$top" != "$bot" ]]; then
-            array[$top]+=" $bot"
-         else
-            array[$top]+=""
-         fi
-      done
-
-      tagCat+="<Categories>"
-
-      for item in ${!array[@]}; do
-         tagCat+="<Category Assigned=\"1\">$item"
-
-         for index in ${array["$item"]}; do
-            tagCat+="<Category Assigned=\"1\">$index</Category>"
-         done
-         tagCat+="</Category>"
-      done
-
-      tagCat+="</Categories>"
-
-      exiftool -overwrite_original_in_place -Categories="$tagCat" "$A"
-
-      keyw=${keyw//;/,}
-      keyw=${keyw%,*}
-
-      tags=${tags// /,}
-      tags=${tags//@/\/}
-
-      echo "TAG : $tags"
-      echo "KEY : $keyw"
-
-      if [[ $tags != "" ]]; then
-         exiftool -overwrite_original -sep "," -TagsList="$tags" -XMP-microsoft:LastKeywordXMP="$tags" "$A"
-
-         tags=${tags//\//\|}
-         exiftool -overwrite_original -sep "," -HierarchicalSubject="$tags" -XMP-mediapro:CatalogSets="$tags" "$A"
-
-         exiftool -overwrite_original -sep "," -XPKeywords="$keyw" -Subject="$keyw" -Keywords="$keyw" -LastKeywordIPTC="$keyw" "$A"
-      else
-         printf "NO TAGS!! $A\n"
-      fi
-   fi
-   tagCat=""
+            # Run exiftool for hierarchical categories and tags.
+            exiftool -overwrite_original_in_place -Categories="$tagCat" "$A"
+            exiftool -overwrite_original -sep "," -TagsList="$fileTags" -XMP-microsoft:LastKeywordXMP="$fileTags" "$A"
+            fileTags="${fileTags//\//|}"
+            exiftool -overwrite_original -sep "," -HierarchicalSubject="$fileTags" -XMP-mediapro:CatalogSets="$fileTags" "$A"
+            keyw="${uniqKeywords//;/,}"
+            keyw="${keyw%,}"
+            exiftool -overwrite_original -sep "," -XPKeywords="$keyw" -Subject="$keyw" -Keywords="$keyw" -LastKeywordIPTC="$keyw" "$A"
+        else
+            echo "NO TAGS!! $A"
+        fi
+    fi
 done
