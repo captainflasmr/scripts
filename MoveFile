@@ -1,0 +1,10 @@
+#! /bin/bash
+DST="/run/media/jdyer/7FBD-D459/Photos/2024"
+
+source Common.sh
+
+for A in $FILES; do
+   pre
+   echo "$A" "${DST}/${FILE}"
+   mv "$A" "${DST}/${FILE}"
+done
