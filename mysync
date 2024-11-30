@@ -10,6 +10,7 @@ function do_sync() {
 }
 
 case "$1" in
+
    --music)
 
       SRC="$HOME/nas/Music/MyMusicLibrary"
@@ -53,6 +54,7 @@ case "$1" in
 
       declare -a LOCAL_SRCS=(
          "/run/media/jdyer/Backup/Photos"
+         "/run/media/jdyer/7FBD-D459/Photos"
       )
 
       for LOCAL_SRC in "${LOCAL_SRCS[@]}"; do
@@ -93,6 +95,31 @@ case "$1" in
             do_sync "$DEST"
          else
             echo "$DEST not present."
+         fi
+      done
+      ;;
+
+   --llm)
+
+      REMOTE_SRC="$HOME/nas/Archive/LLM"
+
+      declare -a LOCAL_SRCS=(
+         "/run/media/jdyer/7FBD-D459/LLM"
+      )
+
+      for LOCAL_SRC in "${LOCAL_SRCS[@]}"; do
+         if [[ -d "$LOCAL_SRC" ]]; then
+
+            RSYNC+=" \"${LOCAL_SRC}/\" \"${REMOTE_SRC}/\""
+            echo "Syncing to ${LOCAL_SRC} -> ${REMOTE_SRC}..."
+
+            echo
+            echo "Press <any key> to continue"
+            read -e RESPONSE
+
+            eval "$RSYNC"
+         else
+            echo "$LOCAL_SRC not present."
          fi
       done
       ;;
