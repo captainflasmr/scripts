@@ -48,12 +48,15 @@ ydotoold --socket-perm 0777 --socket-path=/run/user/1000/.ydotool_socket &
 syncthing -no-browser -no-browser -home="/home/jdyer/.config/syncthing" &
 autotiling &
 udisksctl mount -b /dev/mmcblk0p1 # SD Card
-udisksctl mount -b /dev/sda1 # Attached VM drive
+udisksctl mount -b /dev/sda1
+udisksctl mount -b /dev/sdb1
 battery-monitor.sh &
-emacs --daemon
+# emacs --daemon
 
 NUMPAD_CONNECTED=0
 KEYBOARD_CONNECTED=0
+
+ollama serve &
 
 keymap-load.sh
 
