@@ -8,6 +8,8 @@
 .config
 .davfs2
 .dircolors
+.emacs.d
+.emacs.d.core
 .gnupg
 .ignore
 .local

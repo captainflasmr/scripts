@@ -5,6 +5,7 @@
 *.o
 *.socket
 .cache*
+BraveSoftware
 Cache
 Cached*
 Code Cache
