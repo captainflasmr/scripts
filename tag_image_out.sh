@@ -22,7 +22,7 @@ for A in $FILES; do
    if [[ $? -eq 1 ]]; then
       # only file modification date found so copy to :
       # "CreateDate" "DateTimeOriginal"
-      echo "Writing : FileModifyDate to CreateDate and DateTimeOriginal"
+      echo "Writing $A : FileModifyDate to CreateDate and DateTimeOriginal"
       exiftool -all= -overwrite_original_in_place "-CreateDate<FileModifyDate" "-DateTimeOriginal<FileModifyDate" "$A"
    fi
 

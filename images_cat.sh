@@ -34,7 +34,7 @@ echo "Doing Art..."
 echo
 for DIR in $LIST; do
    echo $DIR
-   SRC="/run/media/jdyer/Backup/Photos/Gallery/${DIR}"
+   SRC="/run/media/jdyer/7FBD-D459/Photos/Gallery/${DIR}"
    DST="/home/jdyer/DCIM/content/tagged"
    # rm -fr $DST/*.jpg
    # resize_images
@@ -47,7 +47,7 @@ echo "Doing Scans..."
 echo
 for DIR in $LIST; do
    echo $DIR
-   SRC="/run/media/jdyer/Backup/Photos/Scans/${DIR}"
+   SRC="/run/media/jdyer/7FBD-D459/Photos/Scans/${DIR}"
    DST="/home/jdyer/DCIM/content/tagged"
    # rm -fr $DST/*.jpg
    # resize_images
@@ -57,9 +57,9 @@ export IFS=" "
 echo
 echo "Doing Photos..."
 echo
-for DIR in {2003..2024}; do
+for DIR in {2024..2024}; do
    echo $DIR
-   SRC="/run/media/jdyer/Backup/Photos/${DIR}"
+   SRC="/run/media/jdyer/7FBD-D459/Photos/${DIR}"
    DST="/home/jdyer/DCIM/content/tagged"
    # rm -fr $DST/*.jpg
    resize_images
