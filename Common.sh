@@ -64,6 +64,8 @@ get_date_from_file() {
 
          if [ "$prop" = "FileModifyDate" ]; then
             return 1
+         elif [ "$prop" = "ModifyDate" ]; then
+            return 1
          else
             return 0
          fi
