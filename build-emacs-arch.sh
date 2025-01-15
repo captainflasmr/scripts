@@ -7,12 +7,10 @@ INSTALL_ROOT="$HOME/emacs-versions"
 # Build dependencies for Arch Linux
 BUILD_DEPS="base-devel gtk2 gtk3 libxpm libjpeg-turbo libpng libtiff giflib libxml2 gnutls"
 
-# Array of Emacs versions to build
+# 27.2 2021-03-25
+# 28.2 2022-09-12
+# 29.4 2024-06-22 
 VERSIONS=(
-    "emacs-23.1"
-    "emacs-24.1"
-    "emacs-25.1"
-    "emacs-26.1"
     "emacs-27.2"
     "emacs-28.2"
     "emacs-29.4"
