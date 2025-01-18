@@ -42,7 +42,7 @@ function simple_extra_backup ()
 function tidy_up ()
 {
    TYPES="webp,jpg,jpeg,png"
-   DIRS="DCIM/Screenshots,DCIM/Camera,Snapseed"
+   DIRS="DCIM/Camera,DCIM/Screenshots,Snapseed"
    log_file="$HOME/DCIM/processed_files_with_checksum.log"
 
    touch "$log_file"
@@ -54,15 +54,15 @@ function tidy_up ()
       echo
       IFS=,
       for TYPE in $TYPES; do
-         echo
-         echo "**************** For TYPE $TYPE"
-         echo
+         # echo
+         # echo "**************** For TYPE $TYPE"
+         # echo
          FILES=$(find "$HOME/$DIR" -iname "*.$TYPE" -printf '%p;')
-         echo $FILES
+         # echo $FILES
          if [[ -n $FILES ]]; then
             source Common.sh "$FILES"
             for A in $FILES; do
-               echo "Looking at $A"
+               # echo "Looking at $A"
                pre
                # Generate an MD5 checksum for the file
                checksum=$(md5sum "$A" | awk '{ print $1 }')
@@ -74,7 +74,7 @@ function tidy_up ()
                   get_trunc_name
                   exiftool -orientation#=1 -overwrite_original_in_place "-FileModifyDate<DateTimeOriginal" "-FileModifyDate<CreateDate" "$A"
                   # convert_it "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' "$TRUNCNAME"
-                  convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
+                  convert_it "$A" -auto-orient -rotate 90 -strip -quality 50% "$TRUNCNAME"
                   # Log the filename and checksum
                   # of course now the filename has changed and potentially
                   # been renamed we need to regenerate the checksum
