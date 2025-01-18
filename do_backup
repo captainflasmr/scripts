@@ -38,9 +38,7 @@ function simple_extra_backup ()
          $HOME/DCIM/Camera/ $HOME/nas/Evie/Camera/
 }
 
-# using checksums in a log file
-function tidy_up ()
-{
+function tidy_up () {
    TYPES="webp,jpg,jpeg,png"
    DIRS="DCIM/Camera,DCIM/Screenshots,Snapseed"
    log_file="$HOME/DCIM/processed_files_with_checksum.log"
@@ -54,77 +52,36 @@ function tidy_up ()
       echo
       IFS=,
       for TYPE in $TYPES; do
-         # echo
-         # echo "**************** For TYPE $TYPE"
-         # echo
          FILES=$(find "$HOME/$DIR" -iname "*.$TYPE" -printf '%p;')
-         # echo $FILES
          if [[ -n $FILES ]]; then
             source Common.sh "$FILES"
             for A in $FILES; do
-               # echo "Looking at $A"
                pre
-               # Generate an MD5 checksum for the file
                checksum=$(md5sum "$A" | awk '{ print $1 }')
 
-               # Check if the checksum is present in the log file
                if ! grep -q "$checksum" "$log_file"; then
-                  # If not processed or new, downscale the image and store in destination
                   EXT=jpg
                   get_trunc_name
                   exiftool -orientation#=1 -overwrite_original_in_place "-FileModifyDate<DateTimeOriginal" "-FileModifyDate<CreateDate" "$A"
-                  # convert_it "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' "$TRUNCNAME"
-                  convert_it "$A" -auto-orient -rotate 90 -strip -quality 50% "$TRUNCNAME"
-                  # Log the filename and checksum
-                  # of course now the filename has changed and potentially
-                  # been renamed we need to regenerate the checksum
+
+                  # Check if the file is a WhatsApp image by matching the filename pattern
+                  if [[ "$A" =~ IMG-[0-9]{8}-WA[0-9]{4}\.jpg$ ]]; then
+                     # Skip rotation for WhatsApp images
+                     echo "Skipping rotation for WhatsApp image: $A"
+                     convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
+                  else
+                     # Regular processing with rotation
+                     convert_it "$A" -auto-orient -rotate 90 -strip -quality 50% "$TRUNCNAME"
+                  fi
+
                   checksum=$(md5sum "$TRUNCNAME" | awk '{ print $1 }')
                   echo "$checksum $A" >> "$log_file"
-                  # echo "Processed: $A"
-               # else
-                  # echo "Skipping: $A (already processed with the same checksum)"
                fi
             done
          fi
       done
    done
 }
-
-# function tidy_up ()
-# {
-#    TYPES="webp,jpg,jpeg,png,mp4,pdf"
-#    DIRS="DCIM/Screenshots,DCIM/Camera,Snapseed"
-
-#    for DIR in $DIRS; do
-#       cd "$HOME/$DIR" || exit
-
-#       if [[ ! -f DATE ]]; then
-#          touch --date "1976-04-03" DATE
-#       fi
-
-#       for TYPE in $TYPES; do
-#          # echo $TYPE
-#          FILES=$(find "$HOME/$DIR" -iname "*.$TYPE" -newer DATE -printf '%p;')
-#          echo $FILES
-#          if [[ -n $FILES ]]; then
-#             source Common.sh "$FILES"
-#             for A in $FILES; do
-#                echo "$A"
-#                pre
-#                if [[ $TYPE != "mp4" ]]; then
-#                   EXT=jpg
-#                   get_trunc_name
-#                   exiftool -orientation#=1 -overwrite_original_in_place "-FileModifyDate<DateTimeOriginal" "-FileModifyDate<CreateDate" "$A"
-#                   # convert_it "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' "$TRUNCNAME"
-#                   convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
-#                fi
-#             done
-#          fi
-#       done
-#       touch DATE
-#    done
-# }
-
 
 function do_input ()
 {
