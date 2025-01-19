@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=PictureTagAndRenameEmacs
+Name[cc]=PictureTagAndRenameEmacs
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=image/*;
+Exec=ServiceConsole PictureTagAndRenameEmacs %F

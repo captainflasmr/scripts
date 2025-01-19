@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Action
+Profiles=profile_id
+Name=PictureTag
+Name[cc]=PictureTag
+Icon=
+
+[X-Action-Profile profile_id]
+MimeTypes=all/all;
+Exec=ServiceConsole PictureTag %F
