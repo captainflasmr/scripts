@@ -1,5 +1,4 @@
 #.mozilla
-.Xauthority
 .authinfo
 .bash_history
 .bash_logout
@@ -9,7 +8,6 @@
 .davfs2
 .dircolors
 .emacs.d
-.emacs.d.core
 .gnupg
 .ignore
 .local
@@ -29,4 +27,3 @@ source
 wallpaper
 .face.icon
 .thunderbird
-.XCompose

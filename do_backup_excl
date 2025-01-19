@@ -18,6 +18,7 @@ http-cache
 .config/gnome-boxes
 .config/icedrive
 .config/libvirt
+.local/share/alire
 .local/share/Meltytech
 .local/share/RecentDocuments
 .local/share/akonadi*
