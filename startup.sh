@@ -32,7 +32,6 @@ if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
       toggle_wlr_keyboard.sh
       launch_waybar &
       sway-audio-idle-inhibit &
-      # DEPRECATION WARNING: `swww init` IS DEPRECATED. Call `swww-daemon` directly instead
       swww-daemon &
       dunst &
    fi
@@ -51,14 +50,11 @@ udisksctl mount -b /dev/mmcblk0p1 # SD Card
 udisksctl mount -b /dev/sda1
 udisksctl mount -b /dev/sdb1
 battery-monitor.sh &
-# emacs --daemon
 
 NUMPAD_CONNECTED=0
 KEYBOARD_CONNECTED=0
 
 ollama serve &
-
-keymap-load.sh
 
 while :
 do
