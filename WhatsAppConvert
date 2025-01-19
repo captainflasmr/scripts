@@ -1,0 +1,92 @@
+#!/bin/bash
+# test time/date convert for Whatsapp
+source Common.sh
+
+for A in $FILES; do
+   pre
+   INFILE="$A"
+   OUTFILE="$BASE-converted.$EXT"
+
+   echo $INFILE $BASE $EXT $OUTFILE
+
+   # echo
+   # read -p "Finished"
+
+   # exit
+
+   while read line; do
+      line=${line/Kate:/Kate,}
+      line=${line/Kate Jeffs:/Kate,}
+      line=${line/James Dyer:/James,}
+      line=${line/James:/James,}
+
+      if [[ $line =~ ^([0-9]+)/([0-9]+)/([0-9]+),[[:space:]]([0-9]+):([0-9]+)[[:space:]]([am|pm]*)(.*)$ ]]; then
+
+         if [[ ! -z $LINE ]]; then
+            # output previous line
+            echo $LINE
+         fi
+
+         # echo "####################################"
+         # echo ${BASH_REMATCH[1]} # date 1
+         # echo ${BASH_REMATCH[2]} # date 2
+         # echo ${BASH_REMATCH[3]} # year
+         # echo ${BASH_REMATCH[4]} # hour
+         # echo ${BASH_REMATCH[5]} # minute
+         # echo ${BASH_REMATCH[6]} # avo
+         # echo ${BASH_REMATCH[7]} # rest of line
+
+         YEAR=${BASH_REMATCH[3]}
+
+         if [[ ${#YEAR} == 4 ]]; then
+            DAY=${BASH_REMATCH[1]}
+            MONTH=${BASH_REMATCH[2]}
+            YEAR=${YEAR:2:2}
+         else
+            DAY=${BASH_REMATCH[2]}
+            MONTH=${BASH_REMATCH[1]}
+         fi
+
+         HOUR=${BASH_REMATCH[4]}
+         MINUTE=${BASH_REMATCH[5]}
+         AVO=${BASH_REMATCH[6]}
+         REST=${BASH_REMATCH[7]}
+
+         REST=${REST#*- }
+
+         if [[ ${DAY:0:1} == "0" ]]; then
+            DAY=${DAY:1:1}
+         fi
+         if [[ ${MONTH:0:1} == "0" ]]; then
+            MONTH=${MONTH:1:1}
+         fi
+
+         if [[ ${AVO} == "pm" && ${HOUR} != "12" ]]; then
+            HOUR=$(( ${HOUR}+12 ))
+         fi
+
+         if [[ ${HOUR:0:1} == "0" ]]; then
+            HOUR=${HOUR:1:1}
+         fi
+         if [[ ${MINUTE:0:1} == "0" ]]; then
+            MINUTE=${MINUTE:1:1}
+         fi
+
+         # now convert to new date format
+         printf -v NEWDATE '%02d/%02d/%02d, %02d:%02d' ${DAY} ${MONTH} ${YEAR} ${HOUR} ${MINUTE}
+
+         # create the start of a new line
+         LINE="${NEWDATE},${REST}"
+      else
+         LINE="$LINE $line"
+      fi
+   done < "$INFILE" > "$OUTFILE"
+
+   if [[ ! -z "$LINE" ]]; then
+      # output previous line
+      echo "$LINE" >> "$OUTFILE"
+   fi
+done
+
+echo
+read -p "Finished"
