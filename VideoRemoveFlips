@@ -9,14 +9,14 @@ for A in $FILES; do
    echo
    echo "Pass 1 ..."
    echo
-   ffmpeg -i "$A" -vf "select='lt(scene,0.05)',setpts=N/FRAME_RATE/TB" \
+   ffmpeg -i "$A" -vf "select='lt(scene,0.005)',setpts=N/FRAME_RATE/TB" \
           -vsync vfr "$NEWFILE_1"
    echo
    echo "Pass 2 ..."
    echo
-   ffmpeg -i "$NEWFILE_1" -vf "select='lt(scene,0.05)',setpts=N/FRAME_RATE/TB" \
+   ffmpeg -i "$NEWFILE_1" -vf "select='lt(scene,0.005)',setpts=N/FRAME_RATE/TB" \
           -vsync vfr "$NEWFILE_FINAL"
 
    # tidy up
-   rm -f "$NEWFILE_1"
+   # rm -f "$NEWFILE_1"
 done
