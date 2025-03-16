@@ -15,6 +15,7 @@ fi
 
 # lets run pywal for colour scheme generation
 wal -c
+# wal -i ~/.last_wallpaper.jpg -q -n 2>&1 /dev/null
 wal -i ~/.last_wallpaper.jpg -q -n
 
 # Load colors from pywal

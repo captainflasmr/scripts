@@ -10,6 +10,6 @@ xremap /home/jdyer/.config/xremap/emacs.yml &
 
 while [[ ! -d /home/jdyer/nas/Home ]]; do
    # mount -t nfs captainflasmr:/volume1/Drive /home/jdyer/nas
-   mount -v -t nfs 192.168.1.198:/volume1/Drive /home/jdyer/nas
+   mount -v -t nfs 192.168.0.19:/volume1/Drive /home/jdyer/nas
    sleep 2
 done

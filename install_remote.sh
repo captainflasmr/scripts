@@ -27,16 +27,12 @@ function get_repos ()
 mkdir -p $HOME/source/repos/themes
 cd $HOME/source/repos/themes
 get_repos "git@github.com:captainflasmr" "hugo-bootstrap-gallery"
-get_repos "https://github.com/Vimux" "Mainroad"
 
 # others
 mkdir -p $HOME/source/repos
 cd $HOME/source/repos
-get_repos "git@github.com:captainflasmr" "arscript-mode cigi-ccl_4_0 dired-compare dotfiles scripts selected-window-accent-mode wowee xkb-mode"
+get_repos "git@github.com:captainflasmr" "dotfiles ollama-buddy scripts"
 get_repos "https://github.com/jjsullivan5196" "wvkbd"
-get_repos "https://github.com/kragen" "xcompose"
-get_repos "https://github.com/fujieda" "xkeymacs"
-get_repos "https://github.com/zk-phi" "ewow"
 
 echo
 echo "Ready to sync to local directories? : Press <any key> to continue"

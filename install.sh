@@ -37,22 +37,10 @@ fi
 echo "----------------------------------------"
 echo "checking cron"
 echo "----------------------------------------"
-if systemctl list-unit-files --type=service | grep -qw 'cronie.service'; then
-  if ! systemctl is-active --quiet cronie; then
-    echo "Enabling and starting cronie service..."
-    sudo systemctl enable cronie
-    sudo systemctl start cronie
-  else
-    echo "cronie service is already running."
-  fi
-else
-   echo "cronie service is not installed."
-   echo "Installing cronie..."
-   pacman -Sy --noconfirm --needed cronie
-   echo "Enabling and starting cronie service..."
-   sudo systemctl enable cronie
-   sudo systemctl start cronie
-fi
+echo "Installing cronie..."
+pacman -Sy --noconfirm --needed cronie
+sudo systemctl enable cronie
+sudo systemctl start cronie
 
 echo
 echo "----------------------------------------"
