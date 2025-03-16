@@ -1,50 +1,20 @@
 * Linux-Install                                             :noexport:2023:
 
-** Install distro (arch based)
-
-update and reboot
+Update and reboot
 
 ** Install
 
-plug in usb and cd to the top level which contains Home
+Navigate to top level of backup disk which contains Home/bin, run:
 
 #+begin_src bash
 ~/bin/install.sh
 #+end_src
-
-** root and nas mount
-
-#+begin_src bash
-sudo systemctl enable cronie.service
-sudo systemctl start cronie.service
-
-sudo crontab -e
-@reboot /home/jdyer/bin/startup_root.sh
-#+end_src
-
-** github
-
-*** reset permissions
-
-~/bin/permissions-*
-
-*** redo github public keys
-
-follow :
-
-TODO SSH :noexport:
-github
-
-Don't forget to use :
-git@github.com:captainflasmr/dotfiles.git
 
 ** Samsung
 
 *** enable brightness with grub / kernel
 
 Modify the GRUB config file sudo nano /etc/default/grub in the GRUB_CMDLINE_LINUX_DEFAULT append "i915.enable_dpcd_backlight=3" then save the file
-
-**** command line
 
 Rebuild GRUB (on Arch):
 
@@ -60,8 +30,6 @@ sync to ~/DCIM
 sync to ~/Snapseed
 
 ** greeter
-
-Remove :
 
 #+begin_src bash
 systemctl disable greetd
