@@ -3,9 +3,9 @@ source Common.sh
 for A in $FILES; do
    pre
    # book thumbs
-   convert "$A" -auto-orient -strip -quality 50% -resize 'x64>' "$A"
+   # convert "$A" -auto-orient -strip -quality 50% -resize 'x64>' "$A"
    # video thumbs
-   # convert_it "$A" -auto-orient -strip -quality 50% -resize '300x>' -resize 'x300>' "$A"
+   # convert_it "$A" -auto-orient -strip -quality 50% -resize '360x>' -resize 'x360>' "$A"
    # standard
    # convert_it "$A" -auto-orient -strip -quality 50% -resize '2048x>' -resize 'x2048>' "$A"
    # higher
@@ -15,6 +15,6 @@ for A in $FILES; do
    # convert_it "$A" -auto-orient -strip -quality 50% -resize '640x>' -resize 'x640>' "$A"
    # convert_it "$A" -resize 640x360^ -gravity center -extent 640x360 "$A"
    # convert_it "$A" -resize 600x420^ -gravity center -extent 600x420 "$A"
-   # convert_it "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' "$A"
+   convert_it "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' "$A"
    # convert_it "$A" -auto-orient -strip -quality 50% -resize '1024x>' -resize 'x1024>' "$A"
 done

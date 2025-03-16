@@ -15,6 +15,7 @@
 .ssh
 .profile
 Applications
+eln-cache
 DCIM
 KritaRecorder
 Snapseed

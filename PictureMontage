@@ -5,7 +5,7 @@ filename="montage_001.jpg"
 counter=1
 
 # Target size for the images
-width=400
+width=1024
 
 for img in "$@"; do
   convert "$img" -resize "${width}x" "$img"

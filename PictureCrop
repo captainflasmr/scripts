@@ -3,8 +3,8 @@
 source Common.sh
 for A in $FILES; do
    pre
-   # convert_it "$A" -resize 300x100^ -gravity center -extent 300x100 "$A"
+   convert_it "$A" -resize 300x100^ -gravity center -extent 300x100 "$A"
    # advent calendar size
    # convert_it "$A" -resize 600x420^ -gravity center -extent 600x420 "$A"
-   convert_it "$A" -resize 1920x1080^ -gravity center -extent 1920x1080 "$A"
+   # convert_it "$A" -resize 1920x1080^ -gravity center -extent 1920x1080 "$A"
 done

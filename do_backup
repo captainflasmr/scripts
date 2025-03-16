@@ -70,8 +70,16 @@ function tidy_up () {
                      echo "Skipping rotation for WhatsApp image: $A"
                      convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
                   else
-                     # Regular processing with rotation
-                     convert_it "$A" -auto-orient -rotate 90 -strip -quality 50% "$TRUNCNAME"
+                     # Rotate only files in the Camera directory
+                     if [[ "$DIR" == "DCIM/Camera" ]]; then
+                        echo "Rotating image: $A (Camera directory)"
+                        # convert_it "$A" -auto-orient -rotate 90 -strip -quality 50% "$TRUNCNAME"
+                        convert_it "$A" -auto-orient -rotate 90 -strip -quality 50% "$TRUNCNAME"
+                     else
+                        # Do not rotate images in other directories
+                        echo "Skipping rotation for image: $A (non-Camera directory)"
+                        convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
+                     fi
                   fi
 
                   checksum=$(md5sum "$TRUNCNAME" | awk '{ print $1 }')
