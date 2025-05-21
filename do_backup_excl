@@ -53,5 +53,6 @@ lock
 public
 public_html
 qBittorrent
+source/repos/melpa
 syncthing
 image-dired
