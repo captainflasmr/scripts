@@ -23,6 +23,7 @@ yaml-language-server
 acpi
 alacritty
 alsa-tools
+alsa-utils
 appimagelauncher
 arc-gtk-theme
 audacity
@@ -78,6 +79,7 @@ inotify-tools
 jdk21-openjdk
 k3b
 kdenlive
+kdeconnect
 keepassxc
 kleopatra
 kolf
@@ -170,24 +172,35 @@ xdg-desktop-portal-wlr
 ydotool
 yt-dlp
 zip
+ffmpeg
+gst-libav
+gst-plugins-base
+gst-plugins-good
+gst-plugins-bad
+gst-plugins-ugly
+mesa
+libva-intel-driver
+intel-media-driver
+nvidia
+nvidia-utils
+nwg-look
 ### AUR ###
 ada_language_server-bin
 autotiling
-gnatstudio-bin
 kmonad
 libretro-cap32-git
 makemkv
 omnisharp-roslyn-bin
+pacseek
 photocollage
 python-eyed3
 qt5-styleplugins
 ruby-fusuma
 steghide
+swww
 wl-screenrec
 surfshark-client
 sway-audio-idle-inhibit-git
-swww
-vscodium-bin
 wl-color-picker
 xremap-wlroots-bin
 ### FLATPAK ###
