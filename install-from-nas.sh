@@ -48,7 +48,7 @@ echo "----------------------------------------"
 echo "checking cron"
 echo "----------------------------------------"
 echo "Installing cronie..."
-pacman -Sy --noconfirm --needed cronie
+sudo pacman -Sy --noconfirm --needed cronie
 sudo systemctl enable cronie
 sudo systemctl start cronie
 
@@ -141,7 +141,7 @@ echo "----------------------------------------"
 echo "installing apps"
 echo "----------------------------------------"
 echo
-./install_apps.sh
+$HOME/bin/install_apps.sh
 
 echo "----------------------------------------"
 echo "checking shell"
