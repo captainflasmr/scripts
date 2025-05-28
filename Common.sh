@@ -146,7 +146,7 @@ function convert_it_video () {
    ffmpeg -hide_banner -loglevel panic -stats -y -i "$FIRST" \
           -map_metadata 0 -threads 8 $ARGS "$TMP.$EXT"
    touch -r "$FIRST" "$TMP.$EXT"
-   trash-put "$FIRST"
+   # trash-put "$FIRST"
    cp -f --preserve "$TMP.$EXT" "$LAST"
 }
 

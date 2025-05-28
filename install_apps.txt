@@ -24,10 +24,12 @@ acpi
 alacritty
 alsa-tools
 alsa-utils
+alsa-firmware
 appimagelauncher
 arc-gtk-theme
 audacity
 awesome-terminal-fonts
+bemenu
 btop
 calcurse
 cdrdao

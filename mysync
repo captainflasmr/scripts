@@ -53,7 +53,7 @@ case "$1" in
       REMOTE_SRC="$HOME/nas/Photos"
 
       declare -a LOCAL_SRCS=(
-         "/run/media/jdyer/Backup/Photos"
+         # "/run/media/jdyer/Backup/Photos"
          "/run/media/jdyer/7FBD-D459/Photos"
       )
 

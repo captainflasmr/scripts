@@ -1,14 +1,6 @@
 #! /bin/bash
 source Common.sh
 for A in $FILES; do
-   pre
-   EXT=jpg
-   get_trunc_name
-   # Note:
-   #
-   # The `-all=` option in `exiftool` is used to **remove all metadata** from a file. More specifically:
-   # - It clears (deletes) **all** Exif, IPTC, XMP, GPS, and other metadata tags that are embedded in the file.
-   # - The file itself remains intact, but its metadata will be stripped away.
-   exiftool -all= -orientation#=1 -overwrite_original_in_place "-FileModifyDate<DateTimeOriginal" "-FileModifyDate<CreateDate" "$A"
-   convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
+    pre
+    
 done
