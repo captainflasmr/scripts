@@ -1,0 +1,44 @@
+#! /bin/bash
+source Common.sh
+
+for A in $FILES; do
+    pre
+
+    inputfile="$A"
+    # Extract the date after "IMG-"
+    imgdate=$(echo "$inputfile" | sed -n 's/.*IMG-\([0-9]\{8\}\)-WA[0-9]*.*/\1/p')
+
+    # Verify we got a date
+    if [[ ! "$imgdate" =~ ^[0-9]{8}$ ]]; then
+        echo "Could not extract IMG date from filename."
+        exit 1
+    fi
+
+    # Build new timestamp (using 12:00:00 as time)
+    newtimestamp="${imgdate}120000"
+
+    # Construct new filename
+    # Preserves everything after the --IMG-YYYYMMDD
+    rest=$(echo "$inputfile" | sed -n 's/^.*--IMG-[0-9]\{8\}\(.*\)$/--IMG-'"$imgdate"'\1/p')
+    newname="${newtimestamp}${rest}"
+
+    echo "#### 2 $A : $imgdate : $rest #### end \n"
+    
+    # Rename the file
+    mv "$inputfile" "$newname"
+
+    # Set EXIF Date/Time Original and Create Date
+    # Format: YYYY:MM:DD HH:MM:SS
+    date_fmt="${imgdate:0:4}:${imgdate:4:2}:${imgdate:6:2} 12:00:00"
+
+    exiftool -overwrite_original \
+             -DateTimeOriginal="$date_fmt" \
+             -CreateDate="$date_fmt" \
+             -ModifyDate="$date_fmt" \
+             "$newname"
+
+    # Update the filesystem modification/access times
+    touch -t "${imgdate}1200" "$newname"
+
+    echo "Renamed to $newname and set metadata date to $date_fmt"
+done
