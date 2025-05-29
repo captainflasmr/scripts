@@ -1,0 +1,146 @@
+#!/bin/bash
+
+# Usage: ./VideoTag2XMP "tag1@subtag2-tag3" file1.mp4 file2.mp4 ...
+
+if [[ $# -lt 2 ]]; then
+    echo "Usage: $0 \"tag1@subtag2-tag3\" video1 [video2 ...]" >&2
+    exit 1
+fi
+
+tagspec="$1"
+shift
+
+# Prepare tag lists
+tags="${tagspec// /}"          # remove spaces
+tags="${tags//,/}"             # remove commas
+tags="${tags//--/-}"           # normalize double dash
+
+IFS='-' read -ra rawtags <<< "$tags"
+
+digikam_tags=""
+msphoto_tags=""
+lr_tags=""
+mediapro_tags=""
+dc_tags=""
+cat_xml="<Categories>"
+declare -A parents
+
+for raw in "${rawtags[@]}"; do
+    if [[ "$raw" == *"@"* ]]; then
+        parent="${raw%%@*}"
+        child="${raw#*@}"
+        digikam_tags+="<rdf:li>${parent}</rdf:li><rdf:li>${parent}/${child}</rdf:li>"
+        msphoto_tags+="<rdf:li>${parent}</rdf:li><rdf:li>${parent}/${child}</rdf:li>"
+        lr_tags+="<rdf:li>${parent}</rdf:li><rdf:li>${parent}|${child}</rdf:li>"
+        mediapro_tags+="<rdf:li>${parent}</rdf:li><rdf:li>${parent}|${child}</rdf:li>"
+        dc_tags+="<rdf:li>${parent}</rdf:li><rdf:li>${child}</rdf:li>"
+        if [[ -z "${parents[$parent]}" ]]; then
+            cat_xml+="<Category Assigned=\"1\">$parent"
+            parents[$parent]=1
+        fi
+        cat_xml+="<Category Assigned=\"1\">$child</Category>"
+    else
+        digikam_tags+="<rdf:li>${raw}</rdf:li>"
+        msphoto_tags+="<rdf:li>${raw}</rdf:li>"
+        lr_tags+="<rdf:li>${raw}</rdf:li>"
+        mediapro_tags+="<rdf:li>${raw}</rdf:li>"
+        dc_tags+="<rdf:li>${raw}</rdf:li>"
+        cat_xml+="<Category Assigned=\"1\">$raw</Category>"
+    fi
+done
+
+for parent in "${!parents[@]}"; do
+    cat_xml+="</Category>"
+done
+cat_xml+="</Categories>"
+
+alltags=()
+for raw in "${rawtags[@]}"; do
+    if [[ "$raw" == *"@"* ]]; then
+        parent="${raw%%@*}"
+        child="${raw#*@}"
+        alltags+=("$parent" "$parent/$child" "$parent|$child" "$child")
+    else
+        alltags+=("$raw")
+    fi
+done
+
+uniqtags=($(printf "%s\n" "${alltags[@]}" | sort -u))
+hierarchical_subjects=()
+mediapro_catalogs=()
+lr_hierarchical=()
+for raw in "${rawtags[@]}"; do
+    if [[ "$raw" == *"@"* ]]; then
+        parent="${raw%%@*}"
+        child="${raw#*@}"
+        hierarchical_subjects+=("${parent}|${child}")
+        mediapro_catalogs+=("${parent}|${child}")
+        lr_hierarchical+=("${parent}|${child}")
+    else
+        hierarchical_subjects+=("$raw")
+        mediapro_catalogs+=("$raw")
+        lr_hierarchical+=("$raw")
+    fi
+done
+
+for video in "$@"; do
+    if [[ ! -f "$video" ]]; then
+        echo "File not found: $video" >&2
+        continue
+    fi
+
+    xmpfile="${video}.xmp"
+    cat > "$xmpfile" <<EOF
+<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="XMP Core 4.4.0-Exiv2">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+    xmlns:digiKam="http://www.digikam.org/ns/1.0/"
+    xmlns:MicrosoftPhoto="http://ns.microsoft.com/photo/1.0/"
+    xmlns:lr="http://ns.adobe.com/lightroom/1.0/"
+    xmlns:mediapro="http://ns.iview-multimedia.com/mediapro/1.0/"
+    xmlns:acdsee="http://ns.acdsee.com/iptc/1.0/"
+    xmlns:tiff="http://ns.adobe.com/tiff/1.0/"
+    xmlns:exif="http://ns.adobe.com/exif/1.0/"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+   acdsee:categories="$cat_xml"
+   tiff:YCbCrPositioning="1"
+   tiff:XResolution="72/1"
+   tiff:YResolution="72/1"
+   tiff:ResolutionUnit="2"
+   exif:GPSVersionID="2.3.0.0"
+   exif:GPSLatitude="0,0.0000000N"
+   exif:GPSLongitude="0,0.0000000E">
+   <digiKam:TagsList>
+    <rdf:Seq>
+     $(printf "%s\n" "$digikam_tags")
+    </rdf:Seq>
+   </digiKam:TagsList>
+   <MicrosoftPhoto:LastKeywordXMP>
+    <rdf:Bag>
+     $(printf "%s\n" "$msphoto_tags")
+    </rdf:Bag>
+   </MicrosoftPhoto:LastKeywordXMP>
+   <lr:hierarchicalSubject>
+    <rdf:Bag>
+     $(for t in "${lr_hierarchical[@]}"; do echo "<rdf:li>$t</rdf:li>"; done)
+    </rdf:Bag>
+   </lr:hierarchicalSubject>
+   <mediapro:CatalogSets>
+    <rdf:Bag>
+     $(for t in "${mediapro_catalogs[@]}"; do echo "<rdf:li>$t</rdf:li>"; done)
+    </rdf:Bag>
+   </mediapro:CatalogSets>
+   <dc:subject>
+    <rdf:Bag>
+     $(for t in "${uniqtags[@]}"; do echo "<rdf:li>$t</rdf:li>"; done)
+    </rdf:Bag>
+   </dc:subject>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>
+EOF
+
+    echo "Created XMP sidecar: $xmpfile"
+done
