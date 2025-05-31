@@ -9,8 +9,6 @@ if [[ $XDG_SESSION_TYPE == "x11" ]]; then
 fi
 
 if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
-    # swww img "/home/jdyer/wallpaper/wallpaper-sddm.jpg" --transition-step 20 --transition-fps=20
-    # swww img "$wallpaper_path" --transition-step 20 --transition-fps=20
     pkill swaybg
     swaybg -i "$wallpaper_path" &
 fi
