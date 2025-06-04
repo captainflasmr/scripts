@@ -3,7 +3,7 @@ source Common.sh
 for A in $FILES; do
    pre
    # book thumbs
-   # convert "$A" -auto-orient -strip -quality 50% -resize 'x64>' "$A"
+   # convert_it "$A" -auto-orient -strip -quality 50% -resize 'x64>' "$A"
    # video thumbs
    # convert_it "$A" -auto-orient -strip -quality 50% -resize '360x>' -resize 'x360>' "$A"
    # standard
