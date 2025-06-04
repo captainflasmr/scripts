@@ -133,6 +133,7 @@ retroarch
 retroarch-assets-xmb
 ripgrep
 rofi
+rofimoji
 rust
 sccache
 scribus
