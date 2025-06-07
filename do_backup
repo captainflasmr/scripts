@@ -8,313 +8,325 @@ IFS=,
 
 function list_filters ()
 {
-   echo "dryrun   : $DRY"
-   echo "included : $INC"
-   echo "trash    : $TRASH"
-   echo "sanity   : $SANITY"
-   echo "excluded : $EXCL"
+    echo "dryrun   : $DRY"
+    echo "included : $INC"
+    echo "trash    : $TRASH"
+    echo "sanity   : $SANITY"
+    echo "excluded : $EXCL"
 }
 
 function select_dir ()
 {
-   select DIR in "$BASE"/*;
-   do
-      case $DIR in
-         *)
-            break
-            ;;
-      esac
-   done
+    select DIR in "$BASE"/*;
+    do
+        case $DIR in
+            *)
+                break
+                ;;
+        esac
+    done
 }
 
 # a backup for just in case on very important files
 function simple_extra_backup ()
 {
-   echo "----------------------------------------"
-   echo "Simple Backup..."
-   echo "----------------------------------------"
-   rsync -rltsiPv --no-g --copy-links \
-         --size-only --modify-window=4 \
-         $HOME/DCIM/Camera/ $HOME/nas/Evie/Camera/
+    echo "----------------------------------------"
+    echo "Simple Backup..."
+    echo "----------------------------------------"
+    rsync -rltsiPv --no-g --copy-links \
+          --size-only --modify-window=4 \
+          $HOME/DCIM/Camera/ $HOME/nas/Evie/Camera/
 }
 
-function tidy_up () {
-   TYPES="webp,jpg,jpeg,png"
-   DIRS="DCIM/Camera,DCIM/Screenshots,Snapseed"
-   log_file="$HOME/DCIM/processed_files_with_checksum.log"
-
-   touch "$log_file"
-
-   for DIR in $DIRS; do
-      cd "$HOME/$DIR" || exit
-      echo
-      echo "**************** Checking $DIR"
-      echo
-      IFS=,
-      for TYPE in $TYPES; do
-         FILES=$(find "$HOME/$DIR" -iname "*.$TYPE" -printf '%p;')
-         if [[ -n $FILES ]]; then
-            source Common.sh "$FILES"
-            for A in $FILES; do
-               pre
-               checksum=$(md5sum "$A" | awk '{ print $1 }')
-
-               if ! grep -q "$checksum" "$log_file"; then
-                  EXT=jpg
-                  get_trunc_name
-                  exiftool -orientation#=1 -overwrite_original_in_place "-FileModifyDate<DateTimeOriginal" "-FileModifyDate<CreateDate" "$A"
-
-                  # Check if the file is a WhatsApp image by matching the filename pattern
-                  if [[ "$A" =~ IMG-[0-9]{8}-WA[0-9]{4}\.jpg$ ]]; then
-                     # Skip rotation for WhatsApp images
-                     echo "Skipping rotation for WhatsApp image: $A"
-                     convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
-                  else
-                     # Rotate only files in the Camera directory
-                     if [[ "$DIR" == "DCIM/Camera" ]]; then
-                        echo "Rotating image: $A (Camera directory)"
-                        # convert_it "$A" -auto-orient -rotate 90 -strip -quality 50% "$TRUNCNAME"
-                        convert_it "$A" -auto-orient -rotate 90 -strip -quality 50% "$TRUNCNAME"
-                     else
-                        # Do not rotate images in other directories
-                        echo "Skipping rotation for image: $A (non-Camera directory)"
-                        convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
-                     fi
-                  fi
-
-                  checksum=$(md5sum "$TRUNCNAME" | awk '{ print $1 }')
-                  echo "$checksum $A" >> "$log_file"
-               fi
-            done
-         fi
-      done
-   done
+function tidy_up() {
+    TYPES="webp,jpg,jpeg,png"
+    DIRS="DCIM/Camera,DCIM/Screenshots,Snapseed"
+    log_file="$HOME/DCIM/processed_files_with_checksum.log"
+    
+    # Number of parallel processes
+    PARALLEL_JOBS=$(nproc)
+    
+    touch "$log_file"
+    
+    # Function to process a single file
+    process_single_file() {
+        local A="$1"
+        local DIR="$2"
+        local log_file="$3"
+        
+        source Common.sh
+        
+        pre
+        checksum=$(md5sum "$A" | awk '{ print $1 }')
+        
+        # Simple check (note: this has potential race conditions)
+        if grep -q "$checksum" "$log_file"; then
+            return 0
+        fi
+        
+        EXT=jpg
+        get_trunc_name
+        exiftool -orientation#=1 -overwrite_original_in_place "-FileModifyDate<DateTimeOriginal" "-FileModifyDate<CreateDate" "$A"
+        
+        if [[ "$A" =~ IMG-[0-9]{8}-WA[0-9]{4}\.jpg$ ]]; then
+            echo "Skipping rotation for WhatsApp image: $A"
+            convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
+        else
+            if [[ "$DIR" == "DCIM/Camera" ]]; then
+                echo "Rotating image: $A (Camera directory)"
+                convert_it "$A" -auto-orient -rotate 90 -strip -quality 50% "$TRUNCNAME"
+            else
+                echo "Skipping rotation for image: $A (non-Camera directory)"
+                convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
+            fi
+        fi
+        
+        checksum=$(md5sum "$TRUNCNAME" | awk '{ print $1 }')
+        echo "$checksum $A" >> "$log_file"
+    }
+    
+    export -f process_single_file
+    
+    for DIR in $DIRS; do
+        cd "$HOME/$DIR" || exit
+        echo
+        echo "**************** Checking $DIR"
+        echo
+        IFS=,
+        for TYPE in $TYPES; do
+            echo "Processing $TYPE files in $DIR..."
+            
+            find "$HOME/$DIR" -iname "*.$TYPE" -print0 | \
+                xargs -0 -I {} -P "$PARALLEL_JOBS" -n 1 \
+                      bash -c 'process_single_file "$1" "$2" "$3"' _ {} "$DIR" "$log_file"
+        done
+    done
 }
 
 function do_input ()
 {
-   echo "SOURCE"
-   select_dir
-   SRC=$DIR
-   echo "DESTINATION"
-   select_dir
-   DST=$DIR
-   echo "======================================================================"
-   echo "DOING ${SRC}/ -> ${DST}/"
-   list_filters
-   echo "======================================================================"
-   echo "Continue? (any key)"
-   read -re
-   do_it
+    echo "SOURCE"
+    select_dir
+    SRC=$DIR
+    echo "DESTINATION"
+    select_dir
+    DST=$DIR
+    echo "======================================================================"
+    echo "DOING ${SRC}/ -> ${DST}/"
+    list_filters
+    echo "======================================================================"
+    echo "Continue? (any key)"
+    read -re
+    do_it
 }
 
 function do_it ()
 {
-   RSYNC="rsync -rltsiPv --no-g --copy-links --delete --size-only --modify-window=4 \
+    RSYNC="rsync -rltsiPv --no-g --copy-links --delete --size-only --modify-window=4 \
     --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*' \
      --exclude-from=\"$HOME/bin/do_backup_excl\" "
-        # --filter=':- .gitignore'
+    # --filter=':- .gitignore'
 
-   if [[ ! -d "$SRC" ]]; then
-      echo
-      echo "WARNING! $SRC NOT FOUND"
-      echo
-      exit
-   fi
+    if [[ ! -d "$SRC" ]]; then
+        echo
+        echo "WARNING! $SRC NOT FOUND"
+        echo
+        exit
+    fi
 
-   if [[ ! -d "$DST" ]]; then
-      echo
-      echo "WARNING! $DST NOT FOUND"
-      echo
-      exit
-   fi
+    if [[ ! -d "$DST" ]]; then
+        echo
+        echo "WARNING! $DST NOT FOUND"
+        echo
+        exit
+    fi
 
-   if [[ $DRY == 1 ]]; then
-      RSYNC+=" --dry-run "
-   fi
+    if [[ $DRY == 1 ]]; then
+        RSYNC+=" --dry-run "
+    fi
 
-   if [[ $EXCL == 1 ]]; then
-      RSYNC+=" --delete-excluded "
-   fi
+    if [[ $EXCL == 1 ]]; then
+        RSYNC+=" --delete-excluded "
+    fi
 
-   if [[ $INC == 1 ]]; then
-      RSYNC+=" --files-from=\"${INC_FILE}\" "
-   fi
+    if [[ $INC == 1 ]]; then
+        RSYNC+=" --files-from=\"${INC_FILE}\" "
+    fi
 
-   if [[ $TRASH == 1 ]]; then
-      RSYNC+="--backup-dir=\"${BACKUPDIR}\" "
-   fi
+    if [[ $TRASH == 1 ]]; then
+        RSYNC+="--backup-dir=\"${BACKUPDIR}\" "
+    fi
 
-   RSYNC+=" \"${SRC}/\" \"${DST}/\" | grep -v \"${FILTERSTR}\""
+    RSYNC+=" \"${SRC}/\" \"${DST}/\" | grep -v \"${FILTERSTR}\""
 
-   list_filters
-   echo "$RSYNC"
-   eval "$RSYNC"
+    list_filters
+    echo "$RSYNC"
+    eval "$RSYNC"
 
-   if [[ $SANITY == 1 ]]; then
-      echo "Sanity Check $SRC -> $DST ...."
-      S1=$(mktemp)
-      S2=$(mktemp)
-      cd "$SRC" || exit
-      ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S1"
-      cd "$DST" || exit
-      ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S2"
-      diff --side-by-side --suppress-common-lines "$S1" "$S2"
-      # rm -f "$S1"
-      # rm -f "$S2"
-   fi
+    if [[ $SANITY == 1 ]]; then
+        echo "Sanity Check $SRC -> $DST ...."
+        S1=$(mktemp)
+        S2=$(mktemp)
+        cd "$SRC" || exit
+        ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S1"
+        cd "$DST" || exit
+        ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S2"
+        diff --side-by-side --suppress-common-lines "$S1" "$S2"
+        # rm -f "$S1"
+        # rm -f "$S2"
+    fi
 
-   echo
-   echo "Finished"
-   echo
+    echo
+    echo "Finished"
+    echo
 }
 
 function backup_home ()
 {
-   # simple_extra_backup
+    # simple_extra_backup
 
-   DRY=0
-   INC=1
-   TRASH=0
-   SANITY=0
-   EXCL=1
+    DRY=0
+    INC=1
+    TRASH=0
+    SANITY=0
+    EXCL=1
 
-   # backup maildir need to tar as handling of colon not great
-   DATE=$(date +%Y%m%d)
-   MONTH=$(date +%d)
-   MAIL_FILE=$HOME/MAIL
-   cd $HOME
-   if [[ $MONTH = "07" || $MONTH = "14" || $MONTH = "21" || $MONTH = "28" ]]; then
-      if [[ ! -f $MAIL_FILE ]]; then
-         echo
-         echo "---------- Doing Maildir ----------"
-         echo
-         tar zcf Maildir.tar.gz .thunderbird
-         echo
-         echo "---------- Done Maildir ----------"
-         echo
-         touch $MAIL_FILE
-      fi
-   else
-      rm -f $MAIL_FILE
-   fi
+    # backup maildir need to tar as handling of colon not great
+    DATE=$(date +%Y%m%d)
+    MONTH=$(date +%d)
+    MAIL_FILE=$HOME/MAIL
+    cd $HOME
+    if [[ $MONTH = "07" || $MONTH = "14" || $MONTH = "21" || $MONTH = "28" ]]; then
+        if [[ ! -f $MAIL_FILE ]]; then
+            echo
+            echo "---------- Doing Maildir ----------"
+            echo
+            tar zcf Maildir.tar.gz .thunderbird
+            echo
+            echo "---------- Done Maildir ----------"
+            echo
+            touch $MAIL_FILE
+        fi
+    else
+        rm -f $MAIL_FILE
+    fi
 
-   # backup other things
-   ARC_FILE=$HOME/ARCHIVE
-   if [[ $MONTH = "11" ]]; then
-      if [[ ! -f $ARC_FILE ]]; then
-         TARGET=~/nas/Archive/Documents/"$DATE"
-         mkdir -p $TARGET
-         rsync -avP --no-g ~/DCIM/content/RedSaucers.kdbx \
-               $TARGET/"$DATE"--RedSaucers.kdbx
-         rsync -avP --no-g ~/DCIM/Volume \
-               $TARGET/"$DATE"--Volume
-         rsync -avP --no-g ~/Maildir.tar.gz \
-               $TARGET/"$DATE"--Maildir.tar.gz
-         rsync -avP --no-g ~/DCIM/Backup/Contacts.vcf \
-               $TARGET/"$DATE"--Contacts.vcf
-         touch $ARC_FILE
-      fi
-   else
-      rm -f $ARC_FILE
-   fi
-   tidy_up
-   # SRC="$HOME"
-   # DST="$HOME/DCIM/Linux"
-   # INC_FILE="$HOME/bin/do_backup_incl_local"
-   # do_it
-   SRC="$HOME"
-   DST="$HOME/nas/Home"
-   INC_FILE="$HOME/bin/do_backup_incl"
-   do_it
+    # backup other things
+    ARC_FILE=$HOME/ARCHIVE
+    if [[ $MONTH = "11" ]]; then
+        if [[ ! -f $ARC_FILE ]]; then
+            TARGET=~/nas/Archive/Documents/"$DATE"
+            mkdir -p $TARGET
+            rsync -avP --no-g ~/DCIM/content/RedSaucers.kdbx \
+                  $TARGET/"$DATE"--RedSaucers.kdbx
+            rsync -avP --no-g ~/DCIM/Volume \
+                  $TARGET/"$DATE"--Volume
+            rsync -avP --no-g ~/Maildir.tar.gz \
+                  $TARGET/"$DATE"--Maildir.tar.gz
+            rsync -avP --no-g ~/DCIM/Backup/Contacts.vcf \
+                  $TARGET/"$DATE"--Contacts.vcf
+            touch $ARC_FILE
+        fi
+    else
+        rm -f $ARC_FILE
+    fi
+    tidy_up
+    # SRC="$HOME"
+    # DST="$HOME/DCIM/Linux"
+    # INC_FILE="$HOME/bin/do_backup_incl_local"
+    # do_it
+    SRC="$HOME"
+    DST="$HOME/nas/Home"
+    INC_FILE="$HOME/bin/do_backup_incl"
+    do_it
 }
 
 cd "$HOME/nas" || exit
 
 if [[ -n $@ ]]; then
-   backup_home
-   exit
+    backup_home
+    exit
 fi
 
 select PRESET in home usb-home ventoy disks $BASE/*;
 do
-   case $PRESET in
-      home)
-         backup_home
-         break
-         ;;
-      usb-home)
-         select QUICK in $BASE/*;
-         do
-            case QUICK in
-               *)
-                  DRY=0
-                  INC=1
-                  TRASH=0
-                  SANITY=0
-                  EXCL=1
-                  SRC="$HOME"
-                  DST="$QUICK/Home"
-                  do_it
-                  exit
-                  ;;
-            esac
-         done
-         ;;
-      ventoy)
-         RSYNC="rsync -rltsiPv --no-g --copy-links --delete --modify-window=4 \
+    case $PRESET in
+        home)
+            backup_home
+            break
+            ;;
+        usb-home)
+            select QUICK in $BASE/*;
+            do
+                case QUICK in
+                    *)
+                        DRY=0
+                        INC=1
+                        TRASH=0
+                        SANITY=0
+                        EXCL=1
+                        SRC="$HOME"
+                        DST="$QUICK/Home"
+                        do_it
+                        exit
+                        ;;
+                esac
+            done
+            ;;
+        ventoy)
+            RSYNC="rsync -rltsiPv --no-g --copy-links --delete --modify-window=4 \
     --exclude '.Trash*' --exclude 'nas' --exclude 'python3.9' --exclude 'kate' --exclude 'plasma' --exclude '.git' \
  --exclude '#recycle*' --exclude '_recycle*' --exclude 'Photos' --exclude 'Maildir' --exclude '.thunderbird' \
       --exclude 'Volume' --exclude 'Videos' --exclude 'KritaRecorder' --exclude 'Reference' --exclude 'music' \
      --exclude-from=\"$HOME/bin/do_backup_excl\" "
-         # --filter=':- .gitignore'
+            # --filter=':- .gitignore'
 
-         SRC="$HOME"
-         DST="$BASE/Ventoy/Home"
+            SRC="$HOME"
+            DST="$BASE/Ventoy/Home"
 
-         RSYNC+=" --files-from=\"${INC_FILE}\" "
-         RSYNC+=" --delete-excluded "
+            RSYNC+=" --files-from=\"${INC_FILE}\" "
+            RSYNC+=" --delete-excluded "
 
-         # RSYNC+=" \"${SRC}/\" \"${DST}/\" | grep -v \"${FILTERSTR}\""
-         RSYNC+=" \"${SRC}/\" \"${DST}/\""
+            # RSYNC+=" \"${SRC}/\" \"${DST}/\" | grep -v \"${FILTERSTR}\""
+            RSYNC+=" \"${SRC}/\" \"${DST}/\""
 
-         echo "$RSYNC"
-         eval "$RSYNC"
-         exit
-         ;;
-      disks)
-         DRY=0
-         INC=0
-         TRASH=0
-         SANITY=1
-         EXCL=1
-         do_input
-         break
-         ;;
-      *)
-         DRY=0
-         INC=0
-         TRASH=0
-         SANITY=1
-         EXCL=1
-         SRC="$HOME/nas"
-         DST="$PRESET"
-         if [[ ! -d "$SRC/Home" ]]; then
-            echo
-            echo "WARNING! $SRC/Home NOT FOUND"
-            echo
+            echo "$RSYNC"
+            eval "$RSYNC"
             exit
-         fi
-         if [[ ! -d "$DST/Home" ]]; then
-            echo
-            echo "WARNING! $DST/Home NOT FOUND"
-            echo
-            exit
-         fi
-         do_it
-         break
-         ;;
-   esac
+            ;;
+        disks)
+            DRY=0
+            INC=0
+            TRASH=0
+            SANITY=1
+            EXCL=1
+            do_input
+            break
+            ;;
+        *)
+            DRY=0
+            INC=0
+            TRASH=0
+            SANITY=1
+            EXCL=1
+            SRC="$HOME/nas"
+            DST="$PRESET"
+            if [[ ! -d "$SRC/Home" ]]; then
+                echo
+                echo "WARNING! $SRC/Home NOT FOUND"
+                echo
+                exit
+            fi
+            if [[ ! -d "$DST/Home" ]]; then
+                echo
+                echo "WARNING! $DST/Home NOT FOUND"
+                echo
+                exit
+            fi
+            do_it
+            break
+            ;;
+    esac
 done
 
 echo
