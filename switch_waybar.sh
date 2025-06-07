@@ -1,41 +1,43 @@
 #!/bin/bash
 
-# cd $HOME/.config
+# List your waybar configs here (add/remove as needed)
+CONFIG_DIR="$HOME/.config"
+CONFIGS=(
+    "$CONFIG_DIR/waybar_garuda"
+    "$CONFIG_DIR/waybar_jdyer"
+    "$CONFIG_DIR/waybar_custom"   # Add your third config here
+)
 
-# if [ "$(readlink "waybar")" = "waybar_jdyer" ]; then
-#     ln -sfn "waybar_garuda" "waybar"
-#     echo "Switched to waybar_garuda."
-# elif [ "$(readlink "waybar")" = "waybar_garuda" ]; then
-#     ln -sfn "waybar_jdyer" "waybar"
-#     echo "Switched to waybar_jdyer."
-# else
-#     echo "The symlink does not point to a known location."
-# fi
+CONFIG_FILE="$CONFIG_DIR/WAYBAR"   # Stores the current config path
 
-# killall waybar
-# waybar &
-
-CONFIG_FILE="/home/jdyer/.config/WAYBAR"
-CONFIG_GARUDA="/home/jdyer/.config/waybar_garuda"
-CONFIG_JDYER="/home/jdyer/.config/waybar_jdyer"
-
+# Initialize CONFIG_FILE if it doesn't exist
 if [[ ! -f $CONFIG_FILE ]]; then
-   echo $CONFIG_GARUDA > $CONFIG_FILE
+    echo "${CONFIGS[0]}" > "$CONFIG_FILE"
 fi
 
-CURRENT_CONFIG=$(cat $CONFIG_FILE)
+CURRENT_CONFIG=$(cat "$CONFIG_FILE")
 
-if [[ $CURRENT_CONFIG == $CONFIG_GARUDA ]]; then
-   NEW_CONFIG=$CONFIG_JDYER
-else
-   NEW_CONFIG=$CONFIG_GARUDA
+# Find current index in array
+CURRENT_INDEX=-1
+for i in "${!CONFIGS[@]}"; do
+    if [[ "${CONFIGS[$i]}" == "$CURRENT_CONFIG" ]]; then
+        CURRENT_INDEX=$i
+        break
+    fi
+done
+
+# If not found, default to the first config
+if [[ $CURRENT_INDEX -eq -1 ]]; then
+    CURRENT_INDEX=0
 fi
 
-echo $NEW_CONFIG > $CONFIG_FILE
+# Compute next config index (cycle)
+NEXT_INDEX=$(( (CURRENT_INDEX + 1) % ${#CONFIGS[@]} ))
+NEW_CONFIG="${CONFIGS[$NEXT_INDEX]}"
+echo "$NEW_CONFIG" > "$CONFIG_FILE"
 
-killall waybar
+# Kill and restart waybar with new config
+killall waybar 2>/dev/null
+waybar -c "$NEW_CONFIG/config" -s "$NEW_CONFIG/style.css" &
 
-# Start waybar with the new configuration
-waybar -c $NEW_CONFIG/config -s $NEW_CONFIG/style.css &
-
-echo "Switched to $(basename $NEW_CONFIG)"
+echo "Switched to $(basename "$NEW_CONFIG")"
