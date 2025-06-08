@@ -21,6 +21,99 @@ run_command() {
     fi
 }
 
+# Function to clean a directory of jpg files
+clean_directory() {
+    local base_dir="$1"
+    local dir_name="$2"
+    
+    if [[ ! -d "$base_dir" ]]; then
+        echo "Warning: $dir_name directory '$base_dir' does not exist. Skipping."
+        return
+    fi
+    
+    echo "Cleaning .jpg files from subdirectories in $base_dir"
+    
+    # Find subdirectories only (not the base directory)
+    for dir in $(find "$base_dir" -mindepth 1 -type d); do
+        echo "Deleting from $dir"
+        cd "$dir"
+        rm -fr *.jpg 2>/dev/null || true  # Suppress errors if no jpg files found
+    done
+    
+    echo "$dir_name cleanup completed."
+}
+
+# Function to clean tagged directory
+clean_tagged_directory() {
+    echo "========== CLEANING TAGGED DIRECTORY =========="
+    clean_directory "$HOME/DCIM/content/tagged" "Tagged directory"
+}
+
+# Function to clean all image destination directories
+clean_image_destinations() {
+    echo "========== CLEANING IMAGE DESTINATION DIRECTORIES =========="
+    
+    # Clean art gallery directories
+    echo "Cleaning art gallery directories..."
+    clean_directory "$HOME/DCIM/content/art--gallery" "Art gallery"
+    
+    # Clean scans directories
+    echo "Cleaning scans directories..."
+    clean_directory "$HOME/DCIM/content/scans" "Scans"
+    
+    # Clean photos directories (by year)
+    echo "Cleaning photos directories..."
+    photos_base="$HOME/DCIM/content/photos"
+    if [[ -d "$photos_base" ]]; then
+        for year_dir in $(find "$photos_base" -mindepth 1 -maxdepth 1 -type d); do
+            echo "Cleaning photos for year: $(basename $year_dir)"
+            cd "$year_dir"
+            rm -fr *.jpg 2>/dev/null || true
+        done
+        echo "Photos directories cleanup completed."
+    else
+        echo "Warning: Photos directory '$photos_base' does not exist. Skipping."
+    fi
+    
+    echo "All image destination directories cleaned."
+}
+
+# Function to clean all content directories
+clean_all_content() {
+    echo "========== CLEANING ALL CONTENT DIRECTORIES =========="
+    clean_tagged_directory
+    clean_image_destinations
+    echo "All content directories cleaned."
+}
+
+# Menu for cleaning operations
+cleaning_menu() {
+    echo "========== CLEANING MENU =========="
+    echo "1. Clean tagged directory only"
+    echo "2. Clean image destinations only"
+    echo "3. Clean all content directories"
+    echo "q. Return to main menu"
+    read -p "Enter your choice: " CLEAN_CHOICE
+
+    case $CLEAN_CHOICE in
+        1)
+            clean_tagged_directory
+            ;;
+        2)
+            clean_image_destinations
+            ;;
+        3)
+            clean_all_content
+            ;;
+        q)
+            echo "Returning to main menu."
+            ;;
+        *)
+            echo "Invalid choice. Returning to main menu."
+            ;;
+    esac
+}
+
 # Menu for tagging operations
 tag_photos_and_videos() {
     echo "========== TAGGING MENU =========="
@@ -103,6 +196,7 @@ while true; do
     echo "========== MAIN MENU =========="
     echo "1. Tag"
     echo "2. Sync"
+    echo "3. Clean"
     read -p "Enter your choice: " MAIN_CHOICE
 
     case $MAIN_CHOICE in
@@ -111,6 +205,9 @@ while true; do
             ;;
         2)
             sync_content
+            ;;
+        3)
+            cleaning_menu
             ;;
         q)
             break
