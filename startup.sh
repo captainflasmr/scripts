@@ -1,12 +1,10 @@
 #!/bin/bash
-# x11
-touchpad_x11="ZNT0001:00 14E5:650E Touchpad"
-touch_x11="ELAN902C:00 04F3:406B"
+
 # wayland
 touch_wayland="1267:16491:ELAN902C:00_04F3:406B"
 
 # lets make sure everything is killed
-KILL_LIST="redshift fusuma launch_polybar polybar picom \
+KILL_LIST="fusuma \
 gammastep-indicator toggle_wlr_keyboard.sh launch_waybar waybar \
 polkit-gnome-authentication-agent-1 kmonad \
 ydotoold syncthing dunst autotiling udiskctrl wvkbd-mobintl battery-monitor.sh"
@@ -30,7 +28,9 @@ syncthing -no-browser -no-browser -home="/home/jdyer/.config/syncthing" &
 autotiling &
 sleep 2
 udisksctl mount -b /dev/mmcblk0p1 # SD Card
-udisksctl mount -b /dev/sda1
+# udisksctl mount -b /dev/sda1
+# Hopefully now handled by fstab
+# UUID=7FBD-D459                            /mnt/local     exfat   rw,nofail,noatime,exec,uid=1000,gid=1000 0 0
 udisksctl mount -b /dev/sdb1
 battery-monitor.sh &
 
