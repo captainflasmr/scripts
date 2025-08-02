@@ -187,8 +187,23 @@ for i in "${!IMAGES[@]}"; do
     
     echo "  Processing $img_file -> ${width}\"x${height}\" (ratio: $(printf "%.2f" "$target_ratio"))"
     
+    # Calculate exact pixel dimensions for this image
+    img_width_px=$(awk "BEGIN {printf \"%.0f\", $width * $DPI}")
+    img_height_px=$(awk "BEGIN {printf \"%.0f\", $height * $DPI}")
+    
+    echo "    Target size: ${img_width_px}x${img_height_px} pixels"
+    
     magick "$img_file" -gravity center -crop "${target_ratio}:1" +repage \
-           -resize "${width}x${height}!" -density $DPI -units PixelsPerInch "$temp_file"
+           -resize "${img_width_px}x${img_height_px}!" -density $DPI -units PixelsPerInch "$temp_file"
+    
+    # Check if temp file was created successfully
+    if [ -f "$temp_file" ]; then
+        file_size=$(stat -f%z "$temp_file" 2>/dev/null || stat -c%s "$temp_file" 2>/dev/null)
+        echo "    ✓ Created $temp_file (${file_size} bytes)"
+    else
+        echo "    ✗ Failed to create $temp_file"
+        exit 1
+    fi
 done
 
 # Calculate paper dimensions in pixels
@@ -268,17 +283,31 @@ OUTPUT_NAME="${OUTPUT_PREFIX}_${PAPER_SIZE}_${#IMAGES[@]}images.jpg"
 echo ""
 echo "Creating final layout..."
 
-# Build magick command
-magick_cmd="magick -size ${PAPER_WIDTH_PX}x${PAPER_HEIGHT_PX} -density $DPI xc:white"
+# Build magick command arguments in an array
+magick_args=()
+magick_args+=("-size" "${PAPER_WIDTH_PX}x${PAPER_HEIGHT_PX}")
+magick_args+=("-density" "$DPI")
+magick_args+=("xc:white")
 
 for i in "${!TEMP_FILES[@]}"; do
-    magick_cmd="$magick_cmd ${TEMP_FILES[$i]} -geometry +${POSITIONS_X[$i]}+${POSITIONS_Y[$i]} -composite"
+    magick_args+=("${TEMP_FILES[$i]}")
+    magick_args+=("-geometry" "+${POSITIONS_X[$i]}+${POSITIONS_Y[$i]}")
+    magick_args+=("-composite")
 done
 
-magick_cmd="$magick_cmd \"$OUTPUT_NAME\""
+magick_args+=("$OUTPUT_NAME")
 
 # Execute the command
-eval $magick_cmd
+echo "Running: magick ${magick_args[*]}"
+magick "${magick_args[@]}"
+
+# Check if the command succeeded
+if [ $? -eq 0 ]; then
+    echo "✓ Magick command completed successfully"
+else
+    echo "✗ Magick command failed"
+    exit 1
+fi
 
 # Clean up temporary files
 for temp_file in "${TEMP_FILES[@]}"; do
