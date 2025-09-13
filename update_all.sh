@@ -187,7 +187,7 @@ sync_content() {
     esac
 }
 
-SRC_DIR="/run/media/jdyer/7FBD-D459/Photos/2025"
+SRC_DIR="/mnt/local/Photos/2025"
 validate_directory "$SRC_DIR"
 cd "$SRC_DIR"
 
@@ -197,6 +197,7 @@ while true; do
     echo "1. Tag"
     echo "2. Sync"
     echo "3. Clean"
+    echo "4. Regenerate"
     read -p "Enter your choice: " MAIN_CHOICE
 
     case $MAIN_CHOICE in
@@ -208,6 +209,11 @@ while true; do
             ;;
         3)
             cleaning_menu
+            ;;
+        4)
+            echo "Running tagged_thumbnail_update.sh..."
+            cd $HOME/DCIM/content/tagged
+            run_command tagged_thumbnail_update.sh
             ;;
         q)
             break

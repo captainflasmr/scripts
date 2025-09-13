@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # PHOTOS_SRC="/run/media/jdyer/Backup/Photos"
-PHOTOS_SRC="/run/media/jdyer/7FBD-D459/Photos"
+PHOTOS_SRC="/mnt/local/Photos"
 
 export IFS=";"
 
@@ -34,7 +34,7 @@ function resize_images_standard() {
     
     echo "Processing images in parallel with $(nproc) cores..."
     
-    find "$SRC" \( -exec [ -f {}/.nomedia ] \; -prune \) -o -iname '*.jpg' -print0 | \
+    find "$SRC" \( -name "private" -type d -prune \) -o \( -exec [ -f {}/.nomedia ] \; -prune \) -o -iname '*.jpg' -print0 | \
         xargs -0 -I {} -P $(nproc) -n 1 \
               bash -c 'process_single_file "$1" "$2"' _ {} "$DST"
     
@@ -71,7 +71,7 @@ function resize_images_tagged() {
     
     echo "Processing images in parallel (tagged mode) with $(nproc) cores..."
     
-    find "$SRC" \( -exec [ -f {}/.nomedia ] \; -prune \) -o -iname '*.jpg' -print0 | \
+    find "$SRC" \( -name "private" -type d -prune \) -o \( -exec [ -f {}/.nomedia ] \; -prune \) -o -iname '*.jpg' -print0 | \
         xargs -0 -I {} -P $(nproc) -n 1 \
               bash -c 'process_single_file_tagged "$1" "$2"' _ {} "$DST"
     

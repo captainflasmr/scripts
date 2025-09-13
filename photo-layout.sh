@@ -17,6 +17,7 @@ OUTPUT_PREFIX="layout"
 
 # Predefined size shortcuts
 declare -A SIZE_PRESETS
+SIZE_PRESETS["a5"]="5.8x8.3"
 SIZE_PRESETS["4x6"]="4x6"
 SIZE_PRESETS["5x7"]="5x7" 
 SIZE_PRESETS["8x10"]="8x10"

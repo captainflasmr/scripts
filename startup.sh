@@ -24,7 +24,7 @@ kdeconnect-indicator &
 nm-applet --indicator &
 /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
 ydotoold --socket-perm 0777 --socket-path=/run/user/1000/.ydotool_socket &
-syncthing -no-browser -no-browser -home="/home/jdyer/.config/syncthing" &
+syncthing --no-browser --home="/home/jdyer/.config/syncthing" &
 autotiling &
 sleep 2
 udisksctl mount -b /dev/mmcblk0p1 # SD Card

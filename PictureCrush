@@ -7,7 +7,7 @@ process_file() {
     local A="$1"
     pre
     # book thumbs
-    convert_it "$A" -auto-orient -strip -quality 50% -resize 'x64>' "$A"
+    # convert_it "$A" -auto-orient -strip -quality 50% -resize 'x64>' "$A"
     # video thumbs
     # convert_it "$A" -auto-orient -strip -quality 50% -resize '360x>' -resize 'x360>' "$A"
     # standard
@@ -21,6 +21,7 @@ process_file() {
     # convert_it "$A" -resize 600x420^ -gravity center -extent 600x420 "$A"
     # convert_it "$A" -auto-orient -strip -quality 50% -resize '1920x>' -resize 'x1920>' "$A"
     # convert_it "$A" -auto-orient -strip -quality 50% -resize '1024x>' -resize 'x1024>' "$A"
+    convert_it "$A" -auto-orient -strip -quality 50% -resize '640x>' -resize 'x640>' "$A"
 }
 
 # Export the function so xargs can use it

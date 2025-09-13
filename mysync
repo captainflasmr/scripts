@@ -54,7 +54,7 @@ case "$1" in
 
       declare -a LOCAL_SRCS=(
          # "/run/media/jdyer/Backup/Photos"
-         "/run/media/jdyer/7FBD-D459/Photos"
+         "/mnt/local/Photos"
       )
 
       for LOCAL_SRC in "${LOCAL_SRCS[@]}"; do
@@ -104,7 +104,7 @@ case "$1" in
       REMOTE_SRC="$HOME/nas/Archive/LLM"
 
       declare -a LOCAL_SRCS=(
-         "/run/media/jdyer/7FBD-D459/LLM"
+         "/mnt/local/LLM"
       )
 
       for LOCAL_SRC in "${LOCAL_SRCS[@]}"; do
