@@ -21,20 +21,14 @@ function process_video() {
     # Calculate checksum of original file
     checksum=$(md5sum "$A" | awk '{ print $1 }')
     
-    # Check if already processed (with simple lock mechanism)
-    if grep -q "$checksum" "$LOG_FILE"; then
+    # Check if already processed with this checksum
+    if grep -q "^$checksum " "$LOG_FILE"; then
         echo "Skipping already processed: $A"
         return 0
     fi
     
     EXT=mp4
-    NEWFILE="${BASEDIR}/${FILE_NO_EXT}__resized.${EXT}"
-    
-    # Skip if output already exists
-    if [ -f "$NEWFILE" ]; then
-        echo "Output already exists: $NEWFILE"
-        return 0
-    fi
+    NEWFILE="${BASEDIR}/${FILE_NO_EXT}.${EXT}"
     
     # Get current video dimensions
     CURRENT_RES=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$A" 2>/dev/null)
@@ -45,11 +39,9 @@ function process_video() {
     
     echo "Processing: $A -> $NEWFILE"
     
-    # Use convert_it_video from Common.sh
-    ffmpeg -hide_banner -loglevel error -stats -y -i "$A" \
+    # Process video and replace original
+    convert_it_video "$A" \
            -vf "$SCALE_FILTER" \
-           -map_metadata 0 \
-           -threads 4 \
            -vcodec libx264 \
            -crf 28 \
            -preset medium \
@@ -57,16 +49,18 @@ function process_video() {
            "$NEWFILE"
     
     if [ $? -eq 0 ]; then
-        # Preserve timestamp
-        touch -r "$A" "$NEWFILE"
-        
-        # Log the processed file with its checksum
+        # Calculate new checksum
         new_checksum=$(md5sum "$NEWFILE" | awk '{ print $1 }')
-        echo "$checksum $A -> $new_checksum $NEWFILE" >> "$LOG_FILE"
-        echo "Successfully processed: $NEWFILE"
+        
+        # Remove old checksum entry if it exists
+        grep -v "^$checksum " "$LOG_FILE" > "$LOG_FILE.tmp"
+        mv "$LOG_FILE.tmp" "$LOG_FILE"
+        
+        # Log the new checksum
+        echo "$new_checksum $NEWFILE" >> "$LOG_FILE"
+        echo "Successfully processed and replaced: $NEWFILE"
     else
         echo "Error processing: $A"
-        rm -f "$NEWFILE"
         return 1
     fi
 }
