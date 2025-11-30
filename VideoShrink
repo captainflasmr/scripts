@@ -3,7 +3,7 @@ source Common.sh
 
 # Configuration
 TARGET_WIDTH=960
-TARGET_HEIGHT=540
+TARGET_HEIGHT=960
 LOG_FILE="$HOME/DCIM/processed_videos_with_checksum.log"
 PARALLEL_JOBS=$(nproc)
 
@@ -34,8 +34,8 @@ function process_video() {
     CURRENT_RES=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$A" 2>/dev/null)
     echo "[$A] Current resolution: $CURRENT_RES"
     
-    # Calculate scaling to fit within 960x540 while maintaining aspect ratio
-    SCALE_FILTER="scale='min(960,iw)':'min(540,ih)':force_original_aspect_ratio=decrease"
+    # Calculate scaling to fit within 960x960 while maintaining aspect ratio
+    SCALE_FILTER="scale='min(960,iw)':'min(960,ih)':force_original_aspect_ratio=decrease"
     
     echo "Processing: $A -> $NEWFILE"
     
