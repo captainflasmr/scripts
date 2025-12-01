@@ -40,15 +40,19 @@ function simple_extra_backup ()
 
 function tidy_up() {
     TYPES="webp,jpg,jpeg,png"
+    VIDEO_TYPES="mp4,mov,avi,mkv,webm,m4v"
     DIRS="DCIM/Camera,DCIM/Screenshots,Snapseed"
-    log_file="$HOME/DCIM/processed_files_with_checksum.log"
+    VIDEO_DIRS="DCIM/Camera"
+    image_log_file="$HOME/DCIM/processed_files_with_checksum.log"
+    video_log_file="$HOME/DCIM/processed_videos_with_checksum.log"
     
     # Number of parallel processes
     PARALLEL_JOBS=$(nproc)
     
-    touch "$log_file"
+    touch "$image_log_file"
+    touch "$video_log_file"
     
-    # Function to process a single file
+    # Function to process a single image file
     process_single_file() {
         local A="$1"
         local DIR="$2"
@@ -82,15 +86,89 @@ function tidy_up() {
         fi
         
         checksum=$(md5sum "$TRUNCNAME" | awk '{ print $1 }')
-        echo "$checksum $A" >> "$log_file"
+        echo "$checksum $TRUNCNAME" >> "$log_file"
+    }
+    
+    # Function to process a single video file
+    process_single_video() {
+        local A="$1"
+        local log_file="$2"
+        
+        source Common.sh
+        
+        pre
+        
+        # Calculate checksum of original file
+        checksum=$(md5sum "$A" | awk '{ print $1 }')
+        
+        # Check if already processed with this checksum
+        if grep -q "^$checksum " "$log_file"; then
+            echo "Skipping already processed video: $A"
+            return 0
+        fi
+        
+        EXT=mp4
+        NEWFILE="${BASEDIR}/${FILE_NO_EXT}.${EXT}"
+        
+        # Get current video dimensions
+        CURRENT_RES=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$A" 2>/dev/null)
+        
+        if [ -z "$CURRENT_RES" ]; then
+            echo "Error: Could not read video dimensions for $A"
+            return 1
+        fi
+        
+        CURRENT_WIDTH=$(echo "$CURRENT_RES" | cut -d'x' -f1)
+        CURRENT_HEIGHT=$(echo "$CURRENT_RES" | cut -d'x' -f2)
+        
+        echo "[$A] Current resolution: ${CURRENT_WIDTH}x${CURRENT_HEIGHT}"
+        
+        # Check if video needs resizing (if either dimension exceeds 960x960)
+        if [ "$CURRENT_WIDTH" -le 960 ] && [ "$CURRENT_HEIGHT" -le 960 ]; then
+            echo "Video already within target size, skipping: $A"
+            checksum=$(md5sum "$A" | awk '{ print $1 }')
+            echo "$checksum $A" >> "$log_file"
+            return 0
+        fi
+        
+        # Calculate scaling to fit within 960x960 while maintaining aspect ratio
+        SCALE_FILTER="scale='min(960,iw)':'min(960,ih)':force_original_aspect_ratio=decrease"
+        
+        echo "Processing video: $A -> $NEWFILE"
+        
+        # Process video and replace original
+        convert_it_video "$A" \
+               -vf "$SCALE_FILTER" \
+               -vcodec libx264 \
+               -crf 28 \
+               -preset medium \
+               -movflags +faststart \
+               "$NEWFILE"
+        
+        if [ $? -eq 0 ]; then
+            # Calculate new checksum
+            new_checksum=$(md5sum "$NEWFILE" | awk '{ print $1 }')
+            
+            # Log the new checksum
+            echo "$new_checksum $NEWFILE" >> "$log_file"
+            echo "Successfully processed and replaced: $NEWFILE"
+        else
+            echo "Error processing video: $A"
+            return 1
+        fi
     }
     
     export -f process_single_file
+    export -f process_single_video
     
+    # Process images
+    echo "=========================================="
+    echo "Processing Images..."
+    echo "=========================================="
     for DIR in $DIRS; do
-        cd "$HOME/$DIR" || exit
+        cd "$HOME/$DIR" || continue
         echo
-        echo "**************** Checking $DIR"
+        echo "**************** Checking $DIR for images"
         echo
         IFS=,
         for TYPE in $TYPES; do
@@ -98,9 +176,34 @@ function tidy_up() {
             
             find "$HOME/$DIR" -iname "*.$TYPE" -print0 | \
                 xargs -0 -I {} -P "$PARALLEL_JOBS" -n 1 \
-                      bash -c 'process_single_file "$1" "$2" "$3"' _ {} "$DIR" "$log_file"
+                      bash -c 'process_single_file "$1" "$2" "$3"' _ {} "$DIR" "$image_log_file"
         done
     done
+    
+    # Process videos
+    echo
+    echo "=========================================="
+    echo "Processing Videos..."
+    echo "=========================================="
+    for DIR in $VIDEO_DIRS; do
+        cd "$HOME/$DIR" || continue
+        echo
+        echo "**************** Checking $DIR for videos"
+        echo
+        IFS=,
+        for TYPE in $VIDEO_TYPES; do
+            echo "Processing $TYPE files in $DIR..."
+            
+            find "$HOME/$DIR" -iname "*.$TYPE" -print0 | \
+                xargs -0 -I {} -P "$PARALLEL_JOBS" -n 1 \
+                      bash -c 'process_single_video "$1" "$2"' _ {} "$video_log_file"
+        done
+    done
+    
+    echo
+    echo "=========================================="
+    echo "Tidy up complete!"
+    echo "=========================================="
 }
 
 function do_input ()
