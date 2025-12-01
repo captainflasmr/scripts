@@ -20,16 +20,16 @@ function resize_videos() {
         if [[ ! -f "$DST/${FILE}" ]]; then
             printf "$DST/${FILE} \n"
             
-            # Maintain aspect ratio while scaling
+            # Use -2 to ensure height is divisible by 2 for H.264 compatibility
             ffmpeg -hide_banner -loglevel panic -stats -y -i "$A" \
-                   -vf "scale='min(960,iw)':'min(480,ih)':force_original_aspect_ratio=decrease" \
+                   -vf "scale='min(960,iw)':-2:force_original_aspect_ratio=decrease" \
                    -threads 1 -vcodec libx264 -crf 28 "$DST/${FILE}"
             
             SIZE=$(du "$DST/${FILE}" 2>/dev/null | cut -f 1 || echo "0")
             if [[ $SIZE == 0 ]]; then
                 echo "ZERO GENERATED for $A - Retrying!!!!"
                 ffmpeg -hide_banner -loglevel panic -stats -y -i "$A" \
-                       -vf "scale='min(960,iw)':'min(480,ih)':force_original_aspect_ratio=decrease" \
+                       -vf "scale='min(960,iw)':-2:force_original_aspect_ratio=decrease" \
                        -threads 1 -vcodec libx264 -crf 23 "$DST/${FILE}"
             fi
             
@@ -46,13 +46,18 @@ function resize_videos() {
               bash -c 'process_single_video "$1" "$2"' _ {} "$DST"
 }
 
-for DIR in {2023..2025}; do
+# SRC="/mnt/local/Photos/2021/202101"
+# DST="$HOME/Downloads/tmp"
+
+# resize_videos
+
+for DIR in {2003..2025}; do
     echo
     echo "Processing Videos $DIR ..."
     echo
     SRC="${PHOTOS_SRC}/${DIR}"
     DST="$HOME/DCIM/Videos/${DIR}"
-    
+
     if [[ -d "$SRC" ]]; then
         resize_videos
     else
