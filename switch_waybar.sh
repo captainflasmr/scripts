@@ -5,7 +5,7 @@ CONFIG_DIR="$HOME/.config"
 CONFIGS=(
     "$CONFIG_DIR/waybar_garuda"
     "$CONFIG_DIR/waybar_jdyer"
-    "$CONFIG_DIR/waybar_custom"   # Add your third config here
+    # "$CONFIG_DIR/waybar_custom"   # Add your third config here
 )
 
 CONFIG_FILE="$CONFIG_DIR/WAYBAR"   # Stores the current config path
