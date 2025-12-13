@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Flexible Photo Print Layout Script
-# Usage: ./flexible-photo-layout.sh [options] image1.jpg:WxH image2.jpg:WxH ...
+# Usage: ./photo-layout.sh [options] image1.jpg:WxH image2.jpg:WxH ...
 # 
 # Examples:
-#   ./flexible-photo-layout.sh photo1.jpg:4x6 photo2.jpg:4x6 photo3.jpg:3.375x2.125
-#   ./flexible-photo-layout.sh --paper A4 --dpi 240 vacation.jpg:5x7 portrait.jpg:4x6 card.jpg:wallet
-#   ./flexible-photo-layout.sh --margin 0.25 --spacing 0.3 img1.jpg:4x6 img2.jpg:square img3.jpg:2x3
+#   ./photo-layout.sh photo1.jpg:4x6 photo2.jpg:4x6 photo3.jpg:3.375x2.125
+#   ./photo-layout.sh --paper A4 --dpi 240 vacation.jpg:5x7 portrait.jpg:4x6 card.jpg:wallet
+#   ./photo-layout.sh --margin 0.25 --spacing 0.3 img1.jpg:4x6 img2.jpg:square img3.jpg:2x3
 
 # Default values
 PAPER_SIZE="A3"
@@ -179,8 +179,8 @@ for i in "${!IMAGES[@]}"; do
     IMAGE_WIDTHS[$i]="$width"
     IMAGE_HEIGHTS[$i]="$height"
     
-    # Create processed image
-    temp_file="temp_${i}_${width}x${height}.jpg"
+    # Create processed image - use PNG24 to ensure 8-bit output compatible format
+    temp_file="temp_${i}_${width}x${height}.png"
     TEMP_FILES+=("$temp_file")
     
     # Calculate aspect ratio and crop accordingly
@@ -194,8 +194,14 @@ for i in "${!IMAGES[@]}"; do
     
     echo "    Target size: ${img_width_px}x${img_height_px} pixels"
     
-    magick "$img_file" -gravity center -crop "${target_ratio}:1" +repage \
-           -resize "${img_width_px}x${img_height_px}!" -density $DPI -units PixelsPerInch "$temp_file"
+    # HDRI fix: clamp values and convert to 8-bit during processing
+    magick "$img_file" \
+           -clamp \
+           -gravity center -crop "${target_ratio}:1" +repage \
+           -resize "${img_width_px}x${img_height_px}!" \
+           -depth 8 \
+           -density "$DPI" -units PixelsPerInch \
+           "PNG24:$temp_file"
     
     # Check if temp file was created successfully
     if [ -f "$temp_file" ]; then
@@ -280,43 +286,85 @@ done
 
 # Create the final layout
 OUTPUT_NAME="${OUTPUT_PREFIX}_${PAPER_SIZE}_${#IMAGES[@]}images.jpg"
+TEMP_CANVAS="temp_canvas.png"
 
 echo ""
 echo "Creating final layout..."
 
-# Build magick command arguments in an array
-magick_args=()
-magick_args+=("-size" "${PAPER_WIDTH_PX}x${PAPER_HEIGHT_PX}")
-magick_args+=("-density" "$DPI")
-magick_args+=("xc:white")
+# Create white canvas - force 8-bit sRGB for HDRI compatibility
+echo "  Creating canvas ${PAPER_WIDTH_PX}x${PAPER_HEIGHT_PX} px at ${DPI} DPI..."
+magick -size "${PAPER_WIDTH_PX}x${PAPER_HEIGHT_PX}" \
+       xc:white \
+       -depth 8 \
+       -colorspace sRGB \
+       -density "$DPI" -units PixelsPerInch \
+       "PNG24:$TEMP_CANVAS"
 
+if [ ! -f "$TEMP_CANVAS" ]; then
+    echo "  ✗ Failed to create canvas"
+    exit 1
+fi
+echo "  ✓ Canvas created"
+
+# Composite each image onto the canvas iteratively
 for i in "${!TEMP_FILES[@]}"; do
-    magick_args+=("${TEMP_FILES[$i]}")
-    magick_args+=("-geometry" "+${POSITIONS_X[$i]}+${POSITIONS_Y[$i]}")
-    magick_args+=("-composite")
+    echo "  Compositing ${TEMP_FILES[$i]} at +${POSITIONS_X[$i]}+${POSITIONS_Y[$i]}..."
+    
+    magick "$TEMP_CANVAS" "${TEMP_FILES[$i]}" \
+           -gravity NorthWest \
+           -geometry "+${POSITIONS_X[$i]}+${POSITIONS_Y[$i]}" \
+           -composite \
+           -depth 8 \
+           "PNG24:$TEMP_CANVAS"
+    
+    if [ $? -ne 0 ]; then
+        echo "  ✗ Failed to composite ${TEMP_FILES[$i]}"
+        rm -f "$TEMP_CANVAS"
+        exit 1
+    fi
 done
 
-magick_args+=("$OUTPUT_NAME")
+echo "  ✓ All images composited"
 
-# Execute the command
-echo "Running: magick ${magick_args[*]}"
-magick "${magick_args[@]}"
+# Convert to final JPEG output with quality settings
+# Critical for HDRI: clamp, depth 8, and explicit colorspace
+echo "  Saving final output..."
+magick "$TEMP_CANVAS" \
+       -clamp \
+       -depth 8 \
+       -colorspace sRGB \
+       -density "$DPI" -units PixelsPerInch \
+       -quality 95 \
+       "$OUTPUT_NAME"
 
 # Check if the command succeeded
-if [ $? -eq 0 ]; then
-    echo "✓ Magick command completed successfully"
+if [ $? -eq 0 ] && [ -f "$OUTPUT_NAME" ]; then
+    echo "  ✓ Output saved successfully"
 else
-    echo "✗ Magick command failed"
+    echo "  ✗ Failed to save output"
+    rm -f "$TEMP_CANVAS"
     exit 1
 fi
 
+# Verify the output is a valid JPEG
+if magick identify "$OUTPUT_NAME" > /dev/null 2>&1; then
+    echo "  ✓ Output verified as valid image"
+else
+    echo "  ⚠ Warning: Output may have issues"
+fi
+
 # Clean up temporary files
+rm -f "$TEMP_CANVAS"
 for temp_file in "${TEMP_FILES[@]}"; do
     rm -f "$temp_file"
 done
 
+# Get final file size
+final_size=$(stat -f%z "$OUTPUT_NAME" 2>/dev/null || stat -c%s "$OUTPUT_NAME" 2>/dev/null)
+final_size_mb=$(awk "BEGIN {printf \"%.1f\", $final_size / 1048576}")
+
 echo ""
-echo "✓ Layout created: $OUTPUT_NAME"
+echo "✓ Layout created: $OUTPUT_NAME (${final_size_mb} MB)"
 echo "✓ Paper: $PAPER_SIZE (${PAPER_WIDTH}\"×${PAPER_HEIGHT}\")"
 echo "✓ Resolution: ${DPI} DPI"
 echo "✓ Images: ${#IMAGES[@]} positioned with ${MARGIN}\" margins, ${SPACING}\" spacing"
