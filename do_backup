@@ -27,17 +27,6 @@ function select_dir ()
     done
 }
 
-# a backup for just in case on very important files
-function simple_extra_backup ()
-{
-    echo "----------------------------------------"
-    echo "Simple Backup..."
-    echo "----------------------------------------"
-    rsync -rltsiPv --no-g --copy-links \
-          --size-only --modify-window=4 \
-          $HOME/DCIM/Camera/ $HOME/nas/Evie/Camera/
-}
-
 function tidy_up() {
     TYPES="webp,jpg,jpeg,png"
     VIDEO_TYPES="mp4,mov,avi,mkv,webm,m4v"
@@ -286,8 +275,6 @@ function do_it ()
 
 function backup_home ()
 {
-    # simple_extra_backup
-
     DRY=0
     INC=1
     TRASH=0
@@ -296,10 +283,11 @@ function backup_home ()
 
     # backup maildir need to tar as handling of colon not great
     DATE=$(date +%Y%m%d)
-    MONTH=$(date +%d)
+    MONTH=$(date +%m)
+    DAY=$(date +%d)
     MAIL_FILE=$HOME/MAIL
     cd $HOME
-    if [[ $MONTH = "07" || $MONTH = "14" || $MONTH = "21" || $MONTH = "28" ]]; then
+    if [[ $DAY = "07" || $DAY = "14" || $DAY = "21" || $DAY = "28" ]]; then
         if [[ ! -f $MAIL_FILE ]]; then
             echo
             echo "---------- Doing Maildir ----------"
@@ -322,8 +310,8 @@ function backup_home ()
             mkdir -p $TARGET
             rsync -avP --no-g ~/DCIM/content/RedSaucers.kdbx \
                   $TARGET/"$DATE"--RedSaucers.kdbx
-            rsync -avP --no-g ~/DCIM/Volume \
-                  $TARGET/"$DATE"--Volume
+            # rsync -avP --no-g ~/DCIM/Volume \
+                  # $TARGET/"$DATE"--Volume
             rsync -avP --no-g ~/Maildir.tar.gz \
                   $TARGET/"$DATE"--Maildir.tar.gz
             rsync -avP --no-g ~/DCIM/Backup/Contacts.vcf \
@@ -335,7 +323,6 @@ function backup_home ()
     fi
     tidy_up
     # SRC="$HOME"
-    # DST="$HOME/DCIM/Linux"
     # INC_FILE="$HOME/bin/do_backup_incl_local"
     # do_it
     SRC="$HOME"
