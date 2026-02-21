@@ -214,54 +214,56 @@ function do_input ()
 
 function do_it ()
 {
-    RSYNC="rsync -rltsiPv --no-g --copy-links --delete --size-only --modify-window=4 \
-    --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*' \
-     --exclude-from=\"$HOME/bin/do_backup_excl\" "
-    # --filter=':- .gitignore'
+    RSYNC_CMD=(
+        rsync -rltsiPv --no-g --copy-links --delete --size-only --modify-window=4
+        --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*'
+        --exclude-from="$HOME/bin/do_backup_excl"
+    )
 
     if [[ ! -d "$SRC" ]]; then
         echo
         echo "WARNING! $SRC NOT FOUND"
         echo
-        exit
+        return 1
     fi
 
     if [[ ! -d "$DST" ]]; then
         echo
         echo "WARNING! $DST NOT FOUND"
         echo
-        exit
+        return 1
     fi
 
     if [[ $DRY == 1 ]]; then
-        RSYNC+=" --dry-run "
+        RSYNC_CMD+=(--dry-run)
     fi
 
     if [[ $EXCL == 1 ]]; then
-        RSYNC+=" --delete-excluded "
+        RSYNC_CMD+=(--delete-excluded)
     fi
 
     if [[ $INC == 1 ]]; then
-        RSYNC+=" --files-from=\"${INC_FILE}\" "
+        RSYNC_CMD+=(--files-from="${INC_FILE}")
     fi
 
     if [[ $TRASH == 1 ]]; then
-        RSYNC+="--backup-dir=\"${BACKUPDIR}\" "
+        RSYNC_CMD+=(--backup-dir="${BACKUPDIR}")
     fi
 
-    RSYNC+=" \"${SRC}/\" \"${DST}/\" | grep -v \"${FILTERSTR}\""
+    RSYNC_CMD+=("${SRC}/" "${DST}/")
 
     list_filters
-    echo "$RSYNC"
-    eval "$RSYNC"
+    echo "${RSYNC_CMD[*]}"
+    
+    "${RSYNC_CMD[@]}" | grep -v "$FILTERSTR"
 
     if [[ $SANITY == 1 ]]; then
         echo "Sanity Check $SRC -> $DST ...."
         S1=$(mktemp)
         S2=$(mktemp)
-        cd "$SRC" || exit
+        cd "$SRC" || return 1
         ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S1"
-        cd "$DST" || exit
+        cd "$DST" || return 1
         ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S2"
         diff --side-by-side --suppress-common-lines "$S1" "$S2"
         # rm -f "$S1"
@@ -333,7 +335,7 @@ function backup_home ()
 
 cd "$HOME/nas" || exit
 
-if [[ -n $@ ]]; then
+if [[ $# -gt 0 ]]; then
     backup_home
     exit
 fi
@@ -364,24 +366,23 @@ do
             done
             ;;
         ventoy)
-            RSYNC="rsync -rltsiPv --no-g --copy-links --delete --modify-window=4 \
-    --exclude '.Trash*' --exclude 'nas' --exclude 'python3.9' --exclude 'kate' --exclude 'plasma' --exclude '.git' \
- --exclude '#recycle*' --exclude '_recycle*' --exclude 'Photos' --exclude 'Maildir' --exclude '.thunderbird' \
-      --exclude 'Volume' --exclude 'Videos' --exclude 'KritaRecorder' --exclude 'Reference' --exclude 'music' \
-     --exclude-from=\"$HOME/bin/do_backup_excl\" "
-            # --filter=':- .gitignore'
+            RSYNC_CMD=(
+                rsync -rltsiPv --no-g --copy-links --delete --modify-window=4
+                --exclude '.Trash*' --exclude 'nas' --exclude 'python3.9' --exclude 'kate' --exclude 'plasma' --exclude '.git'
+                --exclude '#recycle*' --exclude '_recycle*' --exclude 'Photos' --exclude 'Maildir' --exclude '.thunderbird'
+                --exclude 'Volume' --exclude 'Videos' --exclude 'KritaRecorder' --exclude 'Reference' --exclude 'music'
+                --exclude-from="$HOME/bin/do_backup_excl"
+            )
 
             SRC="$HOME"
             DST="$BASE/Ventoy/Home"
 
-            RSYNC+=" --files-from=\"${INC_FILE}\" "
-            RSYNC+=" --delete-excluded "
+            RSYNC_CMD+=(--files-from="${INC_FILE}")
+            RSYNC_CMD+=(--delete-excluded)
+            RSYNC_CMD+=("${SRC}/" "${DST}/")
 
-            # RSYNC+=" \"${SRC}/\" \"${DST}/\" | grep -v \"${FILTERSTR}\""
-            RSYNC+=" \"${SRC}/\" \"${DST}/\""
-
-            echo "$RSYNC"
-            eval "$RSYNC"
+            echo "${RSYNC_CMD[*]}"
+            "${RSYNC_CMD[@]}"
             exit
             ;;
         disks)
