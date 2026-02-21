@@ -34,20 +34,6 @@ case "$1" in
       done
       ;;
 
-   --art)
-
-      LOCAL_SRC="$HOME/DCIM/Art/Working/"
-      REMOTE_SRC="$HOME/nas/OneDrive/Documents/Art/"
-
-      if [[ $2 == "in" ]]; then
-         RSYNC+=" \"${REMOTE_SRC}/\" \"${LOCAL_SRC}/\""
-      else
-         RSYNC+=" \"${LOCAL_SRC}/\" \"${REMOTE_SRC}/\""
-      fi
-
-      eval "$RSYNC"
-      ;;
-
    --photos)
 
       REMOTE_SRC="$HOME/nas/Photos"
