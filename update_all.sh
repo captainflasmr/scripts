@@ -46,7 +46,7 @@ clean_directory() {
 # Function to clean tagged directory
 clean_tagged_directory() {
     echo "========== CLEANING TAGGED DIRECTORY =========="
-    clean_directory "$HOME/DCIM/content/tagged" "Tagged directory"
+    clean_directory "$HOME/publish/hugo-unified/static/tagged" "Tagged directory"
 }
 
 # Function to clean all image destination directories
@@ -55,15 +55,15 @@ clean_image_destinations() {
     
     # Clean art gallery directories
     echo "Cleaning art gallery directories..."
-    clean_directory "$HOME/DCIM/content/art--gallery" "Art gallery"
+    clean_directory "$HOME/publish/hugo-unified/static/art--gallery" "Art gallery"
     
     # Clean scans directories
     echo "Cleaning scans directories..."
-    clean_directory "$HOME/DCIM/content/scans" "Scans"
+    clean_directory "$HOME/publish/hugo-unified/static/scans" "Scans"
     
     # Clean photos directories (by year)
     echo "Cleaning photos directories..."
-    photos_base="$HOME/DCIM/content/photos"
+    photos_base="$HOME/publish/hugo-unified/static/photos"
     if [[ -d "$photos_base" ]]; then
         for year_dir in $(find "$photos_base" -mindepth 1 -maxdepth 1 -type d); do
             echo "Cleaning photos for year: $(basename $year_dir)"
@@ -212,7 +212,7 @@ while true; do
             ;;
         4)
             echo "Running tagged_thumbnail_update.sh..."
-            cd $HOME/DCIM/content/tagged
+            cd $HOME/publish/hugo-unified/static/tagged
             run_command tagged_thumbnail_update.sh
             ;;
         q)
