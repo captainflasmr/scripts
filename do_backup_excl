@@ -31,10 +31,13 @@ http-cache
 .local/share/icons
 .local/share/libvirt
 .local/share/nomic.ai
+.local/share/opencode
+.local/share/pipx
 .local/share/sddm/xorg-session.log
 .local/share/wallpapers/
 .local/share/waydroid
 .local/share/webkitgtk/databases
+.local/share/zed
 .recoll
 .stfolder
 .stversions
