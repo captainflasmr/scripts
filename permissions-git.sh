@@ -1,22 +1,21 @@
 #!/bin/bash
 
-LIST="source/repos/cigi-ccl_4_0
-source/repos/dotfiles
-source/repos/ewow
-source/repos/fd-find
-source/repos/old-ada-mode
-source/repos/scripts
+LIST="source/repos/bank-buddy
+source/repos/dired-image-thumbnail
+source/repos/dired-video-thumbnail
+source/repos/evie
+source/repos/html-to-org
+source/repos/jira-to-org
+source/repos/meal-planner
+source/repos/melpa
+source/repos/melpazoid
+source/repos/ollama-buddy
 source/repos/selected-window-accent-mode
+source/repos/simply-annotate
+source/repos/stuff
 source/repos/themes
-source/repos/wowee
 source/repos/wvkbd
-source/repos/xcompose
-source/repos/xkb-mode
-source/repos/xkeymacs
-.config
-bin"
-
-LIST="source/repos/cigi-ccl_4_0"
+source/repos/xkb-mode"
 
 # create a git alias to revert permissions
 git config --global --add alias.permission-reset '!git diff -p -R --no-ext-diff --no-color --diff-filter=M | grep -E "^(diff|(old|new) mode)" --color=never | git apply'
