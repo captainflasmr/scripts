@@ -43,7 +43,7 @@ function resize_images_standard() {
 
 function resize_images_tagged() {
     cd "$SRC"
-    DST="$HOME/DCIM/content/tagged"
+    DST="$HOME/publish/hugo-unified/content/tagged"
     mkdir -p "$DST"
     
     # Function to process a single file in tagged mode
@@ -95,9 +95,9 @@ function process_art() {
         echo "$DIR"
         SRC="${PHOTOS_SRC}/Gallery/${DIR}"
         if [[ "$ORGANIZATION_MODE" == "tagged" ]]; then
-            DST="$HOME/DCIM/content/tagged"
+            DST="$HOME/publish/hugo-unified/static/tagged"
         else
-            DST="$HOME/DCIM/content/art--gallery/${DIR}"
+            DST="$HOME/publish/hugo-unified/static/art--gallery/${DIR}"
         fi
         resize_images
     done
@@ -112,9 +112,9 @@ function process_scans() {
         echo "$DIR"
         SRC="${PHOTOS_SRC}/Scans/${DIR}"
         if [[ "$ORGANIZATION_MODE" == "tagged" ]]; then
-            DST="$HOME/DCIM/content/tagged"
+            DST="$HOME/publish/hugo-unified/static/tagged"
         else
-            DST="$HOME/DCIM/content/scans/${DIR}"
+            DST="$HOME/publish/hugo-unified/static/scans/${DIR}"
         fi
         resize_images
     done
@@ -141,9 +141,9 @@ function process_photos() {
                     echo "Processing $FOLDER"
                     SRC="${PHOTOS_SRC}/${YEAR}/${FOLDER}"
                     if [[ "$ORGANIZATION_MODE" == "tagged" ]]; then
-                        DST="$HOME/DCIM/content/tagged"
+                        DST="$HOME/publish/hugo-unified/static/tagged"
                     else
-                        DST="$HOME/DCIM/content/photos/${YEAR}"
+                        DST="$HOME/publish/hugo-unified/static/photos/${YEAR}"
                     fi
                     resize_images
                 fi
@@ -192,9 +192,9 @@ function process_photos() {
                     echo "  Processing $FOLDER"
                     SRC="${PHOTOS_SRC}/${YEAR}/${FOLDER}"
                     if [[ "$ORGANIZATION_MODE" == "tagged" ]]; then
-                        DST="$HOME/DCIM/content/tagged"
+                        DST="$HOME/publish/hugo-unified/static/tagged"
                     else
-                        DST="$HOME/DCIM/content/photos/${YEAR}"
+                        DST="$HOME/publish/hugo-unified/static/photos/${YEAR}"
                     fi
                     resize_images
                 done
