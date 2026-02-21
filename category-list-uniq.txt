@@ -493,6 +493,7 @@ seaside
 seaside looe
 sherbourne
 southampton
+southsea
 tedder millie binkle
 tedder rustington
 thepig
