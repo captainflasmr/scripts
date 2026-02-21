@@ -1,5 +1,5 @@
 #!/bin/bash
-base_dir="$HOME/DCIM/content/tagged"
+base_dir="$HOME/publish/hugo-unified/static/tagged"
 
 # Iterate over each subdirectory
 for dir in $(find "$base_dir" -type d); do
