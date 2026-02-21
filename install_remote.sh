@@ -31,7 +31,7 @@ get_repos "git@github.com:captainflasmr" "hugo-bootstrap-gallery"
 # others
 mkdir -p $HOME/source/repos
 cd $HOME/source/repos
-get_repos "git@github.com:captainflasmr" "dotfiles ollama-buddy scripts selected-window-accent-mode"
+get_repos "git@github.com:captainflasmr" "dotfiles scripts bank-buddy dired-image-thumbnail dired-video-thumbnail evie html-to-org jira-to-org meal-planner ollama-buddy selected-window-accent-mode simply-annotate stuff xkb-mode"
 get_repos "https://github.com/jjsullivan5196" "wvkbd"
 
 echo
