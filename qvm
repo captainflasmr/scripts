@@ -1,0 +1,568 @@
+#!/usr/bin/env bash
+#
+# qvm — Quick QEMU VM manager (Docker-inspired CLI)
+#
+# Usage:
+#   qvm create <name> [options]        Create a new VM
+#   qvm install <name> --iso <path>    Boot from ISO to install OS
+#   qvm start <name> [options]         Start an existing VM
+#   qvm run <name> [--offline]          Start a VM and open VNC viewer
+#   qvm stop <name>                    Stop a running VM
+#   qvm ssh <name> [ssh-args...]       SSH into a VM
+#   qvm scp <name> <src> <dest>        SCP files to/from a VM (use : for remote)
+#   qvm vnc <name>                     Open VNC viewer to a VM
+#   qvm list                           List all VMs
+#   qvm info <name>                    Show VM configuration
+#   qvm rename <old> <new>              Rename a VM
+#   qvm rm <name>                      Delete a VM
+#
+# VMs are stored in ~/VM/<name>/
+#
+# Examples:
+#   qvm create leap15 --disk 40G --memory 4G --cpus 4
+#   qvm install leap15 --iso ~/Downloads/openSUSE-Leap-15.4-DVD-x86_64-Media.iso
+#   qvm start leap15
+#   qvm start leap15 --offline
+#   qvm ssh leap15
+#   qvm scp leap15 ./file.tar.gz :/home/jdyer/
+#   qvm stop leap15
+#   qvm list
+#   qvm rm leap15
+
+set -euo pipefail
+
+VM_BASE="$HOME/VM"
+PIDFILE_NAME="qvm.pid"
+CONF_NAME="vm.conf"
+
+# ── Defaults ─────────────────────────────────────────────────────
+
+DEFAULT_MEMORY="4G"
+DEFAULT_CPUS="4"
+DEFAULT_DISK="40G"
+DEFAULT_SSH_PORT="2222"
+DEFAULT_VNC_DISPLAY="1"
+DEFAULT_USER="$USER"
+
+# ── Colours ──────────────────────────────────────────────────────
+
+if [[ -t 1 ]]; then
+    BOLD='\033[1m'
+    DIM='\033[2m'
+    GREEN='\033[32m'
+    RED='\033[31m'
+    YELLOW='\033[33m'
+    CYAN='\033[36m'
+    RESET='\033[0m'
+else
+    BOLD='' DIM='' GREEN='' RED='' YELLOW='' CYAN='' RESET=''
+fi
+
+# ── Helpers ──────────────────────────────────────────────────────
+
+die() { echo -e "${RED}Error:${RESET} $*" >&2; exit 1; }
+info() { echo -e "${CYAN}==>${RESET} $*"; }
+warn() { echo -e "${YELLOW}Warning:${RESET} $*" >&2; }
+
+vm_dir() { echo "$VM_BASE/$1"; }
+vm_conf() { echo "$VM_BASE/$1/$CONF_NAME"; }
+vm_disk() { echo "$VM_BASE/$1/disk.qcow2"; }
+vm_pid() { echo "$VM_BASE/$1/$PIDFILE_NAME"; }
+
+vm_exists() { [[ -f "$(vm_conf "$1")" ]]; }
+
+vm_running() {
+    local pidfile
+    pidfile="$(vm_pid "$1")"
+    [[ -f "$pidfile" ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null
+}
+
+load_conf() {
+    local conf
+    conf="$(vm_conf "$1")"
+    [[ -f "$conf" ]] || die "VM '$1' not found"
+    # shellcheck source=/dev/null
+    source "$conf"
+}
+
+save_conf() {
+    local name="$1"
+    cat > "$(vm_conf "$name")" <<EOF
+# qvm configuration for '$name'
+# Generated $(date -Iseconds)
+VM_MEMORY="${VM_MEMORY}"
+VM_CPUS="${VM_CPUS}"
+VM_DISK_SIZE="${VM_DISK_SIZE}"
+VM_SSH_PORT="${VM_SSH_PORT}"
+VM_VNC_DISPLAY="${VM_VNC_DISPLAY}"
+VM_USER="${VM_USER}"
+EOF
+}
+
+next_free_port() {
+    local port="$1"
+    while ss -tlnH "sport = :$port" 2>/dev/null | grep -q .; do
+        port=$((port + 1))
+    done
+    echo "$port"
+}
+
+next_free_vnc() {
+    local display="$1"
+    local vnc_port=$((5900 + display))
+    while ss -tlnH "sport = :$vnc_port" 2>/dev/null | grep -q .; do
+        display=$((display + 1))
+        vnc_port=$((5900 + display))
+    done
+    echo "$display"
+}
+
+# ── Commands ─────────────────────────────────────────────────────
+
+cmd_create() {
+    local name=""
+    VM_MEMORY="$DEFAULT_MEMORY"
+    VM_CPUS="$DEFAULT_CPUS"
+    VM_DISK_SIZE="$DEFAULT_DISK"
+    VM_SSH_PORT="$DEFAULT_SSH_PORT"
+    VM_VNC_DISPLAY="$DEFAULT_VNC_DISPLAY"
+    VM_USER="$DEFAULT_USER"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -m|--memory)    VM_MEMORY="$2"; shift 2 ;;
+            --cpus)         VM_CPUS="$2"; shift 2 ;;
+            --disk)         VM_DISK_SIZE="$2"; shift 2 ;;
+            -p|--ssh-port)  VM_SSH_PORT="$2"; shift 2 ;;
+            --vnc)          VM_VNC_DISPLAY="$2"; shift 2 ;;
+            -u|--user)      VM_USER="$2"; shift 2 ;;
+            -*)             die "Unknown option: $1" ;;
+            *)
+                [[ -z "$name" ]] || die "Unexpected argument: $1"
+                name="$1"; shift
+                ;;
+        esac
+    done
+
+    [[ -n "$name" ]] || die "Usage: qvm create <name> [--disk 40G] [--memory 4G] [--cpus 4]"
+    vm_exists "$name" && die "VM '$name' already exists"
+
+    # Auto-assign ports to avoid collisions
+    VM_SSH_PORT="$(next_free_port "$VM_SSH_PORT")"
+    VM_VNC_DISPLAY="$(next_free_vnc "$VM_VNC_DISPLAY")"
+
+    info "Creating VM '${BOLD}$name${RESET}'"
+    echo "  Disk:    $VM_DISK_SIZE"
+    echo "  Memory:  $VM_MEMORY"
+    echo "  CPUs:    $VM_CPUS"
+    echo "  SSH:     localhost:$VM_SSH_PORT"
+    echo "  VNC:     :$VM_VNC_DISPLAY (port $((5900 + VM_VNC_DISPLAY)))"
+    echo "  User:    $VM_USER"
+    echo ""
+
+    mkdir -p "$(vm_dir "$name")"
+    qemu-img create -f qcow2 "$(vm_disk "$name")" "$VM_DISK_SIZE"
+    save_conf "$name"
+
+    echo ""
+    info "Done. Next: ${BOLD}qvm install $name --iso /path/to/installer.iso${RESET}"
+}
+
+cmd_install() {
+    local name="" iso=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --iso)  iso="$2"; shift 2 ;;
+            -*)     die "Unknown option: $1" ;;
+            *)
+                [[ -z "$name" ]] || die "Unexpected argument: $1"
+                name="$1"; shift
+                ;;
+        esac
+    done
+
+    [[ -n "$name" ]] || die "Usage: qvm install <name> --iso <path>"
+    [[ -n "$iso" ]]  || die "Missing --iso <path>"
+    [[ -f "$iso" ]]  || die "ISO not found: $iso"
+    vm_exists "$name" || die "VM '$name' not found. Run: qvm create $name"
+    vm_running "$name" && die "VM '$name' is already running"
+
+    load_conf "$name"
+
+    info "Installing from ISO into '${BOLD}$name${RESET}'"
+    echo "  ISO:     $iso"
+    echo "  VNC:     localhost:$((5900 + VM_VNC_DISPLAY))"
+    echo ""
+    echo "  Connect with:  ${BOLD}vncviewer localhost:$((5900 + VM_VNC_DISPLAY))${RESET}"
+    echo ""
+
+    qemu-system-x86_64 \
+        -enable-kvm \
+        -m "$VM_MEMORY" \
+        -smp "$VM_CPUS" \
+        -cpu host \
+        -drive "file=$(vm_disk "$name"),format=qcow2" \
+        -cdrom "$iso" \
+        -boot d \
+        -nic "user,hostfwd=tcp::${VM_SSH_PORT}-:22" \
+        -vnc ":${VM_VNC_DISPLAY}" \
+        -display none \
+        -vga virtio &
+
+    local pid=$!
+    echo "$pid" > "$(vm_pid "$name")"
+
+    info "QEMU running (PID $pid)"
+    info "After installation completes, run: ${BOLD}qvm stop $name${RESET}"
+
+    wait "$pid" 2>/dev/null || true
+    rm -f "$(vm_pid "$name")"
+}
+
+cmd_start() {
+    local name="" offline=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --offline)  offline=true; shift ;;
+            -*)         die "Unknown option: $1" ;;
+            *)
+                [[ -z "$name" ]] || die "Unexpected argument: $1"
+                name="$1"; shift
+                ;;
+        esac
+    done
+
+    [[ -n "$name" ]] || die "Usage: qvm start <name> [--offline]"
+    vm_exists "$name" || die "VM '$name' not found"
+    vm_running "$name" && die "VM '$name' is already running"
+
+    load_conf "$name"
+
+    local nic_opts
+    if $offline; then
+        nic_opts="-nic none"
+        info "Starting '${BOLD}$name${RESET}' ${RED}(offline)${RESET}"
+    else
+        nic_opts="-nic user,hostfwd=tcp::${VM_SSH_PORT}-:22"
+        info "Starting '${BOLD}$name${RESET}'"
+    fi
+
+    echo "  Memory:  $VM_MEMORY"
+    echo "  CPUs:    $VM_CPUS"
+
+    if $offline; then
+        echo "  Network: ${RED}disabled${RESET}"
+        echo "  VNC:     localhost:$((5900 + VM_VNC_DISPLAY))"
+        echo ""
+        echo "  Connect with:  ${BOLD}vncviewer localhost:$((5900 + VM_VNC_DISPLAY))${RESET}"
+    else
+        echo "  SSH:     ${BOLD}qvm ssh $name${RESET}  (localhost:$VM_SSH_PORT)"
+        echo "  VNC:     localhost:$((5900 + VM_VNC_DISPLAY))"
+    fi
+    echo ""
+
+    # shellcheck disable=SC2086
+    qemu-system-x86_64 \
+        -enable-kvm \
+        -m "$VM_MEMORY" \
+        -smp "$VM_CPUS" \
+        -cpu host \
+        -drive "file=$(vm_disk "$name"),format=qcow2" \
+        $nic_opts \
+        -vnc ":${VM_VNC_DISPLAY}" \
+        -display none \
+        -vga virtio &
+
+    local pid=$!
+    echo "$pid" > "$(vm_pid "$name")"
+
+    info "QEMU running (PID $pid)"
+}
+
+cmd_run() {
+    local name="" offline=false
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --offline) offline=true; shift ;;
+            -*) die "Unknown option: $1" ;;
+            *)
+                [[ -z "$name" ]] || die "Unexpected argument: $1"
+                name="$1"; shift
+                ;;
+        esac
+    done
+
+    [[ -n "$name" ]] || die "Usage: qvm run <name> [--offline]"
+
+    local start_args=("$name")
+    $offline && start_args+=("--offline")
+
+    cmd_start "${start_args[@]}"
+
+    # Give QEMU a moment to open the VNC socket
+    sleep 1
+    cmd_vnc "$name"
+}
+
+cmd_stop() {
+    local name="${1:-}"
+    [[ -n "$name" ]] || die "Usage: qvm stop <name>"
+    vm_exists "$name" || die "VM '$name' not found"
+
+    local pidfile
+    pidfile="$(vm_pid "$name")"
+
+    if [[ ! -f "$pidfile" ]]; then
+        warn "VM '$name' does not appear to be running"
+        return 0
+    fi
+
+    local pid
+    pid="$(cat "$pidfile")"
+
+    if kill -0 "$pid" 2>/dev/null; then
+        info "Stopping '${BOLD}$name${RESET}' (PID $pid)"
+        kill "$pid"
+        # Wait up to 10 seconds for graceful shutdown
+        local i
+        for i in $(seq 1 10); do
+            kill -0 "$pid" 2>/dev/null || break
+            sleep 1
+        done
+        # Force kill if still running
+        if kill -0 "$pid" 2>/dev/null; then
+            warn "Force killing PID $pid"
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+        info "Stopped"
+    else
+        warn "Process $pid not running (stale pidfile)"
+    fi
+
+    rm -f "$pidfile"
+}
+
+cmd_ssh() {
+    local name="${1:-}"
+    [[ -n "$name" ]] || die "Usage: qvm ssh <name> [ssh-args...]"
+    vm_exists "$name" || die "VM '$name' not found"
+    shift
+
+    load_conf "$name"
+
+    ssh -p "$VM_SSH_PORT" \
+        -o StrictHostKeyChecking=accept-new \
+        "${VM_USER}@localhost" "$@" 2>/dev/null
+}
+
+cmd_scp() {
+    local name="${1:-}"
+    [[ -n "$name" ]] || die "Usage: qvm scp <name> [-r] <src> <dest>"
+    vm_exists "$name" || die "VM '$name' not found"
+    shift
+
+    [[ $# -ge 2 ]] || die "Usage: qvm scp <name> <src> <dest> (use : prefix for remote paths)"
+
+    load_conf "$name"
+
+    # Collect scp flags and rewrite : prefix to user@host:
+    local scp_flags=()
+    local args=()
+    for arg in "$@"; do
+        if [[ "$arg" == -* ]]; then
+            scp_flags+=("$arg")
+        elif [[ "$arg" == :* ]]; then
+            args+=("${VM_USER}@localhost:${arg#:}")
+        else
+            # Auto-add -r for local directories
+            if [[ -d "$arg" ]]; then
+                scp_flags+=("-r")
+            fi
+            args+=("$arg")
+        fi
+    done
+
+    scp -P "$VM_SSH_PORT" \
+        -o StrictHostKeyChecking=accept-new \
+        "${scp_flags[@]}" \
+        "${args[@]}"
+}
+
+cmd_vnc() {
+    local name="${1:-}"
+    [[ -n "$name" ]] || die "Usage: qvm vnc <name>"
+    vm_exists "$name" || die "VM '$name' not found"
+    vm_running "$name" || die "VM '$name' is not running. Start it first: qvm start $name"
+
+    load_conf "$name"
+
+    local vnc_port=$((5900 + VM_VNC_DISPLAY))
+    info "Connecting to '${BOLD}$name${RESET}' via VNC (localhost:$vnc_port)"
+    vncviewer "localhost:$vnc_port" -RemoteResize=1
+}
+
+cmd_list() {
+    [[ -d "$VM_BASE" ]] || { echo "No VMs found."; return 0; }
+
+    local has_vms=false
+    printf "${BOLD}%-20s %-8s %-6s %-6s %-10s %-8s %s${RESET}\n" \
+        "NAME" "STATUS" "MEM" "CPUS" "DISK" "SSH" "VNC"
+
+    for dir in "$VM_BASE"/*/; do
+        [[ -d "$dir" ]] || continue
+        local name
+        name="$(basename "$dir")"
+        local conf="$dir/$CONF_NAME"
+        [[ -f "$conf" ]] || continue
+
+        has_vms=true
+        # shellcheck source=/dev/null
+        source "$conf"
+
+        local status
+        if vm_running "$name"; then
+            status="${GREEN}running${RESET}"
+        else
+            status="${DIM}stopped${RESET}"
+        fi
+
+        local disk_actual
+        disk_actual="$(du -sh "$dir/disk.qcow2" 2>/dev/null | cut -f1 || echo "?")"
+
+        printf "%-20s %-18b %-6s %-6s %-10s %-8s %s\n" \
+            "$name" "$status" "$VM_MEMORY" "$VM_CPUS" "$disk_actual" \
+            ":$VM_SSH_PORT" ":$VM_VNC_DISPLAY"
+    done
+
+    $has_vms || echo "No VMs found."
+}
+
+cmd_info() {
+    local name="${1:-}"
+    [[ -n "$name" ]] || die "Usage: qvm info <name>"
+    vm_exists "$name" || die "VM '$name' not found"
+
+    load_conf "$name"
+
+    local status
+    if vm_running "$name"; then
+        status="${GREEN}running${RESET}"
+    else
+        status="${DIM}stopped${RESET}"
+    fi
+
+    local disk_actual
+    disk_actual="$(du -sh "$(vm_disk "$name")" 2>/dev/null | cut -f1 || echo "?")"
+
+    echo -e "${BOLD}$name${RESET}"
+    echo "  Status:    $status"
+    echo "  Directory: $(vm_dir "$name")"
+    echo "  Disk:      $(vm_disk "$name") ($disk_actual used / $VM_DISK_SIZE max)"
+    echo "  Memory:    $VM_MEMORY"
+    echo "  CPUs:      $VM_CPUS"
+    echo "  SSH port:  $VM_SSH_PORT"
+    echo "  VNC:       :$VM_VNC_DISPLAY (port $((5900 + VM_VNC_DISPLAY)))"
+    echo "  User:      $VM_USER"
+    echo ""
+    echo "  SSH:       qvm ssh $name"
+    echo "  VNC:       vncviewer localhost:$((5900 + VM_VNC_DISPLAY))"
+    echo "  TRAMP:     /ssh:${VM_USER}@localhost#${VM_SSH_PORT}:/home/${VM_USER}/"
+}
+
+cmd_rename() {
+    local old="${1:-}" new="${2:-}"
+    [[ -n "$old" && -n "$new" ]] || die "Usage: qvm rename <old-name> <new-name>"
+    vm_exists "$old" || die "VM '$old' not found"
+    vm_running "$old" && die "VM '$old' is running. Stop it first: qvm stop $old"
+    vm_exists "$new" && die "VM '$new' already exists"
+
+    mv "$(vm_dir "$old")" "$(vm_dir "$new")"
+
+    # Update the comment in the config
+    load_conf "$new"
+    save_conf "$new"
+
+    info "Renamed '${BOLD}$old${RESET}' to '${BOLD}$new${RESET}'"
+}
+
+cmd_rm() {
+    local name="${1:-}"
+    [[ -n "$name" ]] || die "Usage: qvm rm <name>"
+    vm_exists "$name" || die "VM '$name' not found"
+    vm_running "$name" && die "VM '$name' is running. Stop it first: qvm stop $name"
+
+    local dir
+    dir="$(vm_dir "$name")"
+    local disk_size
+    disk_size="$(du -sh "$dir" 2>/dev/null | cut -f1 || echo "?")"
+
+    echo -e "Remove VM '${BOLD}$name${RESET}' ($disk_size in $dir)?"
+    read -rp "Type the VM name to confirm: " confirm
+    [[ "$confirm" == "$name" ]] || { echo "Cancelled."; return 1; }
+
+    rm -rf "$dir"
+    info "Removed '$name'"
+}
+
+# ── Main ─────────────────────────────────────────────────────────
+
+usage() {
+    cat <<'EOF'
+qvm — Quick QEMU VM manager
+
+Usage:
+  qvm create <name> [options]        Create a new VM
+  qvm install <name> --iso <path>    Boot from ISO to install OS
+  qvm start <name> [--offline]       Start a VM
+  qvm run <name> [--offline]          Start a VM and open VNC viewer
+  qvm stop <name>                    Stop a VM
+  qvm ssh <name> [args...]           SSH into a VM
+  qvm scp <name> <src> <dest>        Copy files (: prefix = remote)
+  qvm vnc <name>                     Open VNC viewer to a VM
+  qvm list                           List all VMs
+  qvm info <name>                    Show VM details
+  qvm rename <old> <new>             Rename a VM
+  qvm rm <name>                      Delete a VM
+
+Create options:
+  -m, --memory <size>    RAM size         (default: 4G)
+  --cpus <n>             CPU count        (default: 4)
+  --disk <size>          Disk size        (default: 40G)
+  -p, --ssh-port <port>  SSH port on host (default: 2222, auto-increments)
+  --vnc <display>        VNC display      (default: 1, auto-increments)
+  -u, --user <name>      SSH username     (default: $USER)
+
+Examples:
+  qvm create leap15 --disk 40G -m 4G
+  qvm install leap15 --iso ~/Downloads/openSUSE-Leap-15.4-DVD-x86_64-Media.iso
+  qvm start leap15
+  qvm ssh leap15
+  qvm scp leap15 ./file.tar.gz :/home/user/
+  qvm start leap15 --offline
+  qvm stop leap15
+EOF
+}
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+    create)     cmd_create "$@" ;;
+    install)    cmd_install "$@" ;;
+    start)      cmd_start "$@" ;;
+    run)        cmd_run "$@" ;;
+    stop)       cmd_stop "$@" ;;
+    ssh)        cmd_ssh "$@" ;;
+    scp)        cmd_scp "$@" ;;
+    vnc)        cmd_vnc "$@" ;;
+    list|ls)    cmd_list "$@" ;;
+    info)       cmd_info "$@" ;;
+    rename|mv)  cmd_rename "$@" ;;
+    rm|remove)  cmd_rm "$@" ;;
+    help|-h|--help) usage ;;
+    "")         usage ;;
+    *)          die "Unknown command: $cmd (try: qvm help)" ;;
+esac
