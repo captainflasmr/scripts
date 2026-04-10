@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# disk-initial-cleanup - One-time setup for disk space management
+# Run with sudo: sudo ./disk-initial-cleanup
+set -euo pipefail
+
+if [[ $EUID -ne 0 ]]; then
+    echo "This script must be run as root (sudo disk-initial-cleanup)"
+    exit 1
+fi
+
+BOLD='\033[1m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+REAL_HOME=$(getent passwd "${SUDO_USER:-root}" | cut -d: -f6)
+REPORT_DIR="$REAL_HOME/.local/share/disk-cleanup"
+REPORT_FILE="$REPORT_DIR/reports.log"
+mkdir -p "$REPORT_DIR"
+chown "${SUDO_USER:-root}:${SUDO_USER:-root}" "$REPORT_DIR"
+
+report_lines=()
+report() { report_lines+=("$1"); }
+
+DISK_BEFORE=$(df -h / | awk 'NR==2{print $3 " used / " $2 " total (" $5 " full)"}')
+
+echo -e "${BOLD}${CYAN}=== Disk Initial Cleanup ===${NC}"
+echo "Before: $DISK_BEFORE"
+echo ""
+
+# Pacman cache - keep only last 1 version
+echo -e "${BOLD}1) Cleaning pacman cache (keep last 1 version)...${NC}"
+pacman_before=$(du -sb /var/cache/pacman/pkg 2>/dev/null | cut -f1 || echo 0)
+paccache -rk1
+paccache -ruk0
+pacman_after=$(du -sb /var/cache/pacman/pkg 2>/dev/null | cut -f1 || echo 0)
+report "Pacman cache: $(numfmt --to=iec $pacman_before) -> $(numfmt --to=iec $pacman_after) (freed $(numfmt --to=iec $(( pacman_before - pacman_after ))))"
+echo ""
+
+# Paru AUR build cache
+echo -e "${BOLD}2) Cleaning paru AUR build cache...${NC}"
+PARU_CACHE="$REAL_HOME/.cache/paru/clone"
+if [[ -d "$PARU_CACHE" ]]; then
+    paru_before=$(du -sb "$PARU_CACHE" 2>/dev/null | cut -f1 || echo 0)
+    du -sh "$PARU_CACHE"
+    rm -rf "$PARU_CACHE"/*
+    echo -e "${GREEN}Paru cache cleared.${NC}"
+    report "Paru cache: freed $(numfmt --to=iec $paru_before)"
+else
+    echo "No paru cache found."
+    report "Paru cache: not found"
+fi
+echo ""
+
+# Enable weekly paccache timer
+echo -e "${BOLD}3) Enabling weekly paccache timer...${NC}"
+systemctl enable --now paccache.timer
+
+# Override to keep 1 version
+mkdir -p /etc/systemd/system/paccache.service.d
+cat > /etc/systemd/system/paccache.service.d/override.conf <<'EOF'
+[Service]
+ExecStart=
+ExecStart=/usr/bin/paccache -rk1
+EOF
+systemctl daemon-reload
+echo -e "${GREEN}paccache.timer enabled (keeps 1 version).${NC}"
+report "paccache.timer: enabled with 1-version override"
+echo ""
+
+# Clean old snapshots (keep last 2)
+echo -e "${BOLD}4) Cleaning old btrfs snapshots (keep last 2)...${NC}"
+if command -v snapper &>/dev/null; then
+    snapshots=$(ls /.snapshots 2>/dev/null | sort -n)
+    snap_count=$(echo "$snapshots" | wc -w)
+    if (( snap_count > 2 )); then
+        to_remove=$(echo "$snapshots" | head -n -2)
+        remove_count=$(echo "$to_remove" | wc -w)
+        echo "Removing snapshots: $to_remove"
+        for snap in $to_remove; do
+            snapper delete "$snap" 2>/dev/null && echo "  Deleted $snap" || echo "  Warning: could not delete $snap"
+        done
+        report "Snapshots: removed $remove_count (kept 2 most recent)"
+    else
+        echo "Already at 2 or fewer snapshots."
+        report "Snapshots: already at 2 or fewer"
+    fi
+else
+    echo "snapper not found, skipping."
+    report "Snapshots: snapper not found"
+fi
+echo ""
+
+# Summary & report
+DISK_AFTER=$(df -h / | awk 'NR==2{print $3 " used / " $2 " total (" $5 " full)"}')
+echo -e "${BOLD}${CYAN}=== Done ===${NC}"
+echo "After: $DISK_AFTER"
+
+{
+    echo "========================================"
+    echo "DISK INITIAL CLEANUP REPORT"
+    echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "Host: $(hostname)"
+    echo "----------------------------------------"
+    for line in "${report_lines[@]}"; do
+        echo "$line"
+    done
+    echo "----------------------------------------"
+    echo "Disk before: $DISK_BEFORE"
+    echo "Disk after:  $DISK_AFTER"
+    echo "========================================"
+    echo ""
+} >> "$REPORT_FILE"
+chown "${SUDO_USER:-root}:${SUDO_USER:-root}" "$REPORT_FILE"
+echo -e "${GREEN}Report saved to: ${REPORT_FILE}${NC}"

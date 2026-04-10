@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# disk-usage-report - Show a comprehensive disk usage breakdown
+set -euo pipefail
+
+BOLD='\033[1m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+header() { echo -e "\n${BOLD}${CYAN}=== $1 ===${NC}"; }
+
+# Overall filesystem usage
+header "Filesystem Overview"
+df -hT /
+echo ""
+
+# Colour-code usage percentage
+usage_pct=$(df --output=pcent / | tail -1 | tr -d ' %')
+if (( usage_pct >= 90 )); then
+    echo -e "Status: ${RED}CRITICAL (${usage_pct}% used)${NC}"
+elif (( usage_pct >= 75 )); then
+    echo -e "Status: ${YELLOW}WARNING (${usage_pct}% used)${NC}"
+else
+    echo -e "Status: ${GREEN}OK (${usage_pct}% used)${NC}"
+fi
+
+# Btrfs-specific info (needs root for full detail)
+header "Btrfs Snapshot Count"
+snap_count=$(ls /.snapshots 2>/dev/null | wc -l)
+echo "Snapshots in /.snapshots: ${snap_count}"
+if command -v snapper &>/dev/null; then
+    echo ""
+    snapper list 2>/dev/null || echo "(run as root for full snapshot list)"
+fi
+
+# Pacman cache
+header "Pacman Package Cache"
+pkg_size=$(du -sh /var/cache/pacman/pkg 2>/dev/null | cut -f1)
+pkg_count=$(ls /var/cache/pacman/pkg 2>/dev/null | wc -l)
+echo "Size: ${pkg_size:-N/A} (${pkg_count} files)"
+
+# Paru/AUR cache
+header "Paru AUR Build Cache"
+if [[ -d "$HOME/.cache/paru" ]]; then
+    paru_size=$(du -sh "$HOME/.cache/paru" 2>/dev/null | cut -f1)
+    echo "Size: ${paru_size}"
+else
+    echo "Not found"
+fi
+
+# User cache
+header "User Cache (~/.cache)"
+if [[ -d "$HOME/.cache" ]]; then
+    cache_total=$(du -sh "$HOME/.cache" 2>/dev/null | cut -f1)
+    echo "Total: ${cache_total}"
+    echo ""
+    echo "Top consumers:"
+    du -sh "$HOME/.cache"/* 2>/dev/null | sort -hr | head -10
+fi
+
+# Home directory breakdown
+header "Home Directory Breakdown"
+du -h --max-depth=1 "$HOME" 2>/dev/null | sort -hr | head -20
+
+# Large directories outside home
+header "System Directories"
+echo "Pacman cache:  $(du -sh /var/cache/pacman/pkg 2>/dev/null | cut -f1)"
+echo "Flatpak:       $(du -sh /var/lib/flatpak 2>/dev/null | cut -f1)"
+echo "Journal logs:  $(journalctl --disk-usage 2>/dev/null | grep -oP '[\d.]+[KMGT]' || echo 'N/A')"
+echo "Coredumps:     $(du -sh /var/lib/systemd/coredump 2>/dev/null | cut -f1)"
+echo "Var log:       $(du -sh /var/log 2>/dev/null | cut -f1)"
+
+# Orphaned packages
+header "Orphaned Packages"
+orphans=$(pacman -Qdtq 2>/dev/null || true)
+if [[ -n "$orphans" ]]; then
+    echo "$orphans" | while read -r pkg; do
+        size=$(pacman -Qi "$pkg" 2>/dev/null | grep "Installed Size" | awk '{print $4, $5}')
+        echo "  $pkg ($size)"
+    done
+else
+    echo "None"
+fi
+
+# Largest installed packages
+header "Largest Installed Packages (top 15)"
+pacman -Qi 2>/dev/null | awk '/^Name/{name=$3} /^Installed Size/{print $4, $5, name}' | sort -hr | head -15
+
+echo ""
+echo -e "${BOLD}Tip:${NC} Run 'disk-cleanup' for interactive cleanup options."

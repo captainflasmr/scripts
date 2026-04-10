@@ -1,0 +1,395 @@
+#!/usr/bin/env bash
+# disk-cleanup - Interactive disk space cleanup for Arch Linux with btrfs/snapper
+set -euo pipefail
+
+BOLD='\033[1m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+DRY_RUN=false
+AUTO_YES=false
+
+REPORT_DIR="$HOME/.local/share/disk-cleanup"
+REPORT_FILE="$REPORT_DIR/reports.log"
+mkdir -p "$REPORT_DIR"
+
+report_lines=()
+report() { report_lines+=("$1"); }
+
+write_report() {
+    {
+        echo "========================================"
+        echo "DISK CLEANUP REPORT"
+        echo "Date: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "Host: $(hostname)"
+        echo "----------------------------------------"
+        for line in "${report_lines[@]}"; do
+            echo "$line"
+        done
+        echo "----------------------------------------"
+        echo "Disk before: $DISK_BEFORE"
+        echo "Disk after:  $(df -h / | awk 'NR==2{print $3 " used / " $2 " total (" $5 " full)"}')"
+        if (( freed_total > 0 )); then
+            echo "Total freed: $(numfmt --to=iec $freed_total)"
+        fi
+        echo "========================================"
+        echo ""
+    } >> "$REPORT_FILE"
+    echo -e "${GREEN}Report saved to: ${REPORT_FILE}${NC}"
+}
+
+usage() {
+    echo "Usage: disk-cleanup [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  -n, --dry-run   Show what would be done without doing it"
+    echo "  -y, --yes       Skip confirmation prompts"
+    echo "  -a, --all       Run all cleanup actions"
+    echo "  -h, --help      Show this help"
+    echo ""
+    echo "Individual actions (combine multiple):"
+    echo "  --pacman        Clean pacman package cache (keep last 1 version)"
+    echo "  --paru          Clean paru AUR build cache"
+    echo "  --snapshots     Remove old btrfs snapshots (keep last 2)"
+    echo "  --journal       Vacuum journal logs (keep last 2 weeks)"
+    echo "  --cache         Clean user cache directories"
+    echo "  --orphans       Remove orphaned packages"
+    echo "  --coredumps     Remove old coredumps"
+    echo "  --trash         Empty trash"
+}
+
+confirm() {
+    if $AUTO_YES; then return 0; fi
+    local msg="$1"
+    echo -en "${YELLOW}${msg} [y/N] ${NC}"
+    read -r reply
+    [[ "$reply" =~ ^[Yy]$ ]]
+}
+
+action_header() {
+    echo -e "\n${BOLD}${CYAN}--- $1 ---${NC}"
+}
+
+freed_total=0
+note_freed() {
+    local before=$1 after=$2
+    local diff=$(( before - after ))
+    if (( diff > 0 )); then
+        freed_total=$(( freed_total + diff ))
+        echo -e "${GREEN}Freed: $(numfmt --to=iec $diff)${NC}"
+    fi
+}
+
+get_dir_bytes() {
+    du -sb "$1" 2>/dev/null | cut -f1 || echo 0
+}
+
+# Parse arguments
+RUN_ALL=false
+DO_PACMAN=false
+DO_PARU=false
+DO_SNAPSHOTS=false
+DO_JOURNAL=false
+DO_CACHE=false
+DO_ORPHANS=false
+DO_COREDUMPS=false
+DO_TRASH=false
+INTERACTIVE=true
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -n|--dry-run)   DRY_RUN=true; shift ;;
+        -y|--yes)       AUTO_YES=true; shift ;;
+        -a|--all)       RUN_ALL=true; INTERACTIVE=false; shift ;;
+        -h|--help)      usage; exit 0 ;;
+        --pacman)       DO_PACMAN=true; INTERACTIVE=false; shift ;;
+        --paru)         DO_PARU=true; INTERACTIVE=false; shift ;;
+        --snapshots)    DO_SNAPSHOTS=true; INTERACTIVE=false; shift ;;
+        --journal)      DO_JOURNAL=true; INTERACTIVE=false; shift ;;
+        --cache)        DO_CACHE=true; INTERACTIVE=false; shift ;;
+        --orphans)      DO_ORPHANS=true; INTERACTIVE=false; shift ;;
+        --coredumps)    DO_COREDUMPS=true; INTERACTIVE=false; shift ;;
+        --trash)        DO_TRASH=true; INTERACTIVE=false; shift ;;
+        *)              echo "Unknown option: $1"; usage; exit 1 ;;
+    esac
+done
+
+if $RUN_ALL; then
+    DO_PACMAN=true; DO_PARU=true; DO_SNAPSHOTS=true; DO_JOURNAL=true
+    DO_CACHE=true; DO_ORPHANS=true; DO_COREDUMPS=true; DO_TRASH=true
+fi
+
+$DRY_RUN && echo -e "${YELLOW}DRY RUN MODE - no changes will be made${NC}"
+
+DISK_BEFORE=$(df -h / | awk 'NR==2{print $3 " used / " $2 " total (" $5 " full)"}')
+echo -e "${BOLD}Current disk usage:${NC} $DISK_BEFORE"
+
+# === Interactive menu ===
+if $INTERACTIVE; then
+    echo ""
+    echo -e "${BOLD}Available cleanup actions:${NC}"
+
+    pkg_size=$(du -sh /var/cache/pacman/pkg 2>/dev/null | cut -f1)
+    paru_size=$(du -sh "$HOME/.cache/paru" 2>/dev/null | cut -f1 || echo "0")
+    snap_count=$(ls /.snapshots 2>/dev/null | wc -l)
+    cache_size=$(du -sh "$HOME/.cache" 2>/dev/null | cut -f1)
+    orphan_count=$(pacman -Qdtq 2>/dev/null | wc -l)
+    coredump_size=$(du -sh /var/lib/systemd/coredump 2>/dev/null | cut -f1)
+    trash_size=$(du -sh "$HOME/.local/share/Trash" 2>/dev/null | cut -f1 || echo "0")
+
+    echo "  1) Pacman cache       - ${pkg_size} (keep last 1 version)"
+    echo "  2) Paru AUR cache     - ${paru_size}"
+    echo "  3) Btrfs snapshots    - ${snap_count} snapshots (keep last 2)"
+    echo "  4) Journal logs       - $(journalctl --disk-usage 2>/dev/null | grep -oP '[\d.]+[KMGT]' || echo 'N/A') (keep 2 weeks)"
+    echo "  5) User cache         - ${cache_size}"
+    echo "  6) Orphaned packages  - ${orphan_count} packages"
+    echo "  7) Coredumps          - ${coredump_size}"
+    echo "  8) Trash              - ${trash_size}"
+    echo "  a) All of the above"
+    echo "  q) Quit"
+    echo ""
+    echo -en "Select actions (e.g. 1,2,3 or a): "
+    read -r selection
+
+    case "$selection" in
+        *a*) DO_PACMAN=true; DO_PARU=true; DO_SNAPSHOTS=true; DO_JOURNAL=true
+             DO_CACHE=true; DO_ORPHANS=true; DO_COREDUMPS=true; DO_TRASH=true ;;
+        *q*|"") echo "Cancelled."; exit 0 ;;
+        *)
+            [[ "$selection" == *1* ]] && DO_PACMAN=true
+            [[ "$selection" == *2* ]] && DO_PARU=true
+            [[ "$selection" == *3* ]] && DO_SNAPSHOTS=true
+            [[ "$selection" == *4* ]] && DO_JOURNAL=true
+            [[ "$selection" == *5* ]] && DO_CACHE=true
+            [[ "$selection" == *6* ]] && DO_ORPHANS=true
+            [[ "$selection" == *7* ]] && DO_COREDUMPS=true
+            [[ "$selection" == *8* ]] && DO_TRASH=true
+            ;;
+    esac
+fi
+
+# === Pacman cache ===
+if $DO_PACMAN; then
+    action_header "Pacman Package Cache"
+    before=$(get_dir_bytes /var/cache/pacman/pkg)
+    echo "Current: $(numfmt --to=iec $before) ($(ls /var/cache/pacman/pkg | wc -l) files)"
+
+    if $DRY_RUN; then
+        echo "[DRY RUN] Would run: paccache -rk1"
+        paccache -dk1 2>/dev/null || true
+        report "Pacman cache: DRY RUN ($(numfmt --to=iec $before))"
+    else
+        if confirm "Clean pacman cache (keep last 1 version of each package)?"; then
+            sudo paccache -rk1
+            # Also remove uninstalled package cache
+            if confirm "Also remove cache of uninstalled packages?"; then
+                sudo paccache -ruk0
+            fi
+            after=$(get_dir_bytes /var/cache/pacman/pkg)
+            note_freed "$before" "$after"
+            report "Pacman cache: $(numfmt --to=iec $before) -> $(numfmt --to=iec $after) (freed $(numfmt --to=iec $(( before - after ))))"
+        else
+            report "Pacman cache: skipped"
+        fi
+    fi
+fi
+
+# === Paru cache ===
+if $DO_PARU; then
+    action_header "Paru AUR Build Cache"
+    if [[ -d "$HOME/.cache/paru/clone" ]]; then
+        before=$(get_dir_bytes "$HOME/.cache/paru")
+        echo "Current: $(numfmt --to=iec $before)"
+
+        if $DRY_RUN; then
+            echo "[DRY RUN] Would remove $HOME/.cache/paru/clone/*"
+            report "Paru cache: DRY RUN ($(numfmt --to=iec $before))"
+        else
+            if confirm "Clean paru AUR build cache?"; then
+                rm -rf "$HOME/.cache/paru/clone"/*
+                after=$(get_dir_bytes "$HOME/.cache/paru")
+                note_freed "$before" "$after"
+                report "Paru cache: $(numfmt --to=iec $before) -> $(numfmt --to=iec $after) (freed $(numfmt --to=iec $(( before - after ))))"
+            else
+                report "Paru cache: skipped"
+            fi
+        fi
+    else
+        echo "No paru cache found."
+        report "Paru cache: not found"
+    fi
+fi
+
+# === Btrfs snapshots ===
+if $DO_SNAPSHOTS; then
+    action_header "Btrfs Snapshots"
+    snap_count=$(ls /.snapshots 2>/dev/null | wc -l)
+    echo "Current snapshots: ${snap_count}"
+
+    if (( snap_count > 2 )); then
+        snapshots_to_remove=$(ls /.snapshots 2>/dev/null | sort -n | head -n -2)
+        echo "Will keep the 2 most recent, removing: $snapshots_to_remove"
+
+        remove_count=$(echo "$snapshots_to_remove" | wc -w)
+        if $DRY_RUN; then
+            echo "[DRY RUN] Would remove $remove_count snapshots"
+            report "Snapshots: DRY RUN (would remove $remove_count)"
+        else
+            if confirm "Remove $remove_count old snapshots?"; then
+                for snap in $snapshots_to_remove; do
+                    echo "  Removing snapshot $snap..."
+                    sudo snapper delete "$snap" 2>/dev/null || echo "  Warning: could not remove $snap"
+                done
+                echo -e "${GREEN}Snapshots cleaned.${NC}"
+                report "Snapshots: removed $remove_count (kept 2 most recent)"
+            else
+                report "Snapshots: skipped"
+            fi
+        fi
+    else
+        echo "Already at 2 or fewer snapshots."
+        report "Snapshots: already at 2 or fewer"
+    fi
+fi
+
+# === Journal ===
+if $DO_JOURNAL; then
+    action_header "Journal Logs"
+    journalctl --disk-usage 2>/dev/null || true
+
+    if $DRY_RUN; then
+        echo "[DRY RUN] Would run: journalctl --vacuum-time=2weeks"
+        report "Journal: DRY RUN"
+    else
+        if confirm "Vacuum journal logs (keep last 2 weeks)?"; then
+            sudo journalctl --vacuum-time=2weeks
+            report "Journal: vacuumed (kept last 2 weeks)"
+        else
+            report "Journal: skipped"
+        fi
+    fi
+fi
+
+# === User cache ===
+if $DO_CACHE; then
+    action_header "User Cache Cleanup"
+    before=$(get_dir_bytes "$HOME/.cache")
+    echo "Current total: $(numfmt --to=iec $before)"
+    echo ""
+    echo "Safe to clean:"
+    targets=(
+        "$HOME/.cache/go-build"
+        "$HOME/.cache/node-gyp"
+        "$HOME/.cache/thumbnails"
+        "$HOME/.cache/ms-playwright-go"
+    )
+    for dir in "${targets[@]}"; do
+        if [[ -d "$dir" ]]; then
+            echo "  $(du -sh "$dir" 2>/dev/null)"
+        fi
+    done
+
+    if $DRY_RUN; then
+        echo "[DRY RUN] Would clear the above directories"
+        report "User cache: DRY RUN ($(numfmt --to=iec $before))"
+    else
+        if confirm "Clear these cache directories?"; then
+            for dir in "${targets[@]}"; do
+                [[ -d "$dir" ]] && rm -rf "$dir"
+            done
+            after=$(get_dir_bytes "$HOME/.cache")
+            note_freed "$before" "$after"
+            report "User cache: $(numfmt --to=iec $before) -> $(numfmt --to=iec $after) (freed $(numfmt --to=iec $(( before - after ))))"
+        else
+            report "User cache: skipped"
+        fi
+    fi
+fi
+
+# === Orphans ===
+if $DO_ORPHANS; then
+    action_header "Orphaned Packages"
+    orphans=$(pacman -Qdtq 2>/dev/null || true)
+    if [[ -n "$orphans" ]]; then
+        echo "Found orphans:"
+        echo "$orphans" | while read -r pkg; do
+            size=$(pacman -Qi "$pkg" 2>/dev/null | grep "Installed Size" | awk '{print $4, $5}')
+            echo "  $pkg ($size)"
+        done
+
+        if $DRY_RUN; then
+            echo "[DRY RUN] Would run: pacman -Rns \$(pacman -Qdtq)"
+            report "Orphans: DRY RUN ($(echo "$orphans" | wc -l) packages)"
+        else
+            if confirm "Remove all orphaned packages?"; then
+                sudo pacman -Rns $(pacman -Qdtq) --noconfirm
+                report "Orphans: removed $(echo "$orphans" | wc -l) packages"
+            else
+                report "Orphans: skipped"
+            fi
+        fi
+    else
+        echo "No orphans found."
+        report "Orphans: none found"
+    fi
+fi
+
+# === Coredumps ===
+if $DO_COREDUMPS; then
+    action_header "Coredumps"
+    coredump_size=$(du -sh /var/lib/systemd/coredump 2>/dev/null | cut -f1)
+    echo "Current: ${coredump_size}"
+
+    if $DRY_RUN; then
+        echo "[DRY RUN] Would clear coredumps"
+        report "Coredumps: DRY RUN (${coredump_size})"
+    else
+        if confirm "Clear old coredumps?"; then
+            sudo find /var/lib/systemd/coredump -type f -delete 2>/dev/null || true
+            echo -e "${GREEN}Coredumps cleared.${NC}"
+            report "Coredumps: cleared (was ${coredump_size})"
+        else
+            report "Coredumps: skipped"
+        fi
+    fi
+fi
+
+# === Trash ===
+if $DO_TRASH; then
+    action_header "Trash"
+    if [[ -d "$HOME/.local/share/Trash" ]]; then
+        trash_size=$(du -sh "$HOME/.local/share/Trash" 2>/dev/null | cut -f1)
+        echo "Current: ${trash_size}"
+
+        if $DRY_RUN; then
+            echo "[DRY RUN] Would empty trash"
+            report "Trash: DRY RUN (${trash_size})"
+        else
+            if confirm "Empty trash?"; then
+                rm -rf "$HOME/.local/share/Trash"/{files,info}/*
+                echo -e "${GREEN}Trash emptied.${NC}"
+                report "Trash: emptied (was ${trash_size})"
+            else
+                report "Trash: skipped"
+            fi
+        fi
+    else
+        echo "Trash is empty."
+        report "Trash: already empty"
+    fi
+fi
+
+# Summary & report
+echo ""
+echo -e "${BOLD}=== Summary ===${NC}"
+echo -e "Disk after cleanup: $(df -h / | awk 'NR==2{print $3 " used / " $2 " total (" $5 " full)"}')"
+if (( freed_total > 0 )); then
+    echo -e "${GREEN}Total freed: $(numfmt --to=iec $freed_total)${NC}"
+fi
+
+if ! $DRY_RUN && (( ${#report_lines[@]} > 0 )); then
+    write_report
+fi
