@@ -358,5 +358,263 @@ TAGS is a comma-separated string or list of tags."
                                 (format "-Keywords=%s" keyword-str)
                                 file))))
 
+;;;###autoload
+(defun jdyer-media-retag-by-date ()
+  "Rename images based on EXIF creation date."
+  (interactive)
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (let* ((date-info (jdyer-media-get-date file))
+           (prop (car date-info))
+           (val (cadr date-info)))
+      (when date-info
+        (when (member prop '("FileModifyDate" "ModifyDate"))
+          (message "Writing %s to CreateDate and DateTimeOriginal for %s" prop file)
+          (shell-command (format "exiftool -all= -overwrite_original_in_place \"-CreateDate<%s\" \"-DateTimeOriginal<%s\" %s"
+                                 prop prop (shell-quote-argument file))))
+        (let* ((formatted-date (jdyer-media-format-date val))
+               (parsed (jdyer-media--parse-filename file))
+               (current-ts (cdr (assoc 'timestamp parsed)))
+               (label (cdr (assoc 'label parsed)))
+               (tags-raw (cdr (assoc 'tags-raw parsed)))
+               (ext (cdr (assoc 'extension parsed)))
+               (basedir (cdr (assoc 'directory parsed))))
+          (if (not (string= formatted-date current-ts))
+              (let* ((new-base (format "%s--%s" formatted-date label))
+                     (new-name (if tags-raw
+                                   (format "%s/%s__%s.%s" basedir new-base tags-raw ext)
+                                 (format "%s/%s.%s" basedir new-base ext)))
+                     (final-name new-name)
+                     (counter 1))
+                (while (file-exists-p final-name)
+                  (setq final-name (if tags-raw
+                                       (format "%s/%s%d__%s.%s" basedir new-base counter tags-raw ext)
+                                     (format "%s/%s%d.%s" basedir new-base counter ext)))
+                  (cl-incf counter))
+                (unless (string= (expand-file-name final-name) (expand-file-name file))
+                  (message "%s -> %s" file final-name)
+                  (rename-file file final-name)))
+            (message "#### %s : NO CHANGE" file)))))))
+
+;;;###autoload
+(defun jdyer-media-audio-convert ()
+  "Convert audio to MP3."
+  (interactive)
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (let* ((parsed (jdyer-media--parse-filename file))
+           (dst (concat (cdr (assoc 'directory parsed)) (cdr (assoc 'no-ext parsed)) ".mp3")))
+      (jdyer-media--run-command "ffmpeg" "-hide_banner" "-loglevel" "warning" "-stats" "-y" "-i" file "-b:a" "192k" dst))))
+
+;;;###autoload
+(defun jdyer-media-audio-info ()
+  "Show audio ID3 tags."
+  (interactive)
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (jdyer-media--run-command "id3v2" "-l" file)))
+
+;;;###autoload
+(defun jdyer-media-picture-info ()
+  "Show image metadata."
+  (interactive)
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (jdyer-media--run-command "exiftool" "-g" file)))
+
+;;;###autoload
+(defun jdyer-media-video-info ()
+  "Show video info using ffprobe and exiftool."
+  (interactive)
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (jdyer-media--run-command "ffprobe" file)
+    (jdyer-media--run-command "exiftool" file)))
+
+;;;###autoload
+(defun jdyer-media-video-to-gif ()
+  "Convert video to GIF."
+  (interactive)
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (let* ((parsed (jdyer-media--parse-filename file))
+           (dst (concat (cdr (assoc 'directory parsed)) (cdr (assoc 'no-ext parsed)) ".gif")))
+      (jdyer-media-convert-video file dst "-vf" "fps=20,scale=800:-1:flags=lanczos" "-loop" "0"))))
+
+;;;###autoload
+(defun jdyer-media-picture-update-from-create-date ()
+  "Update FileModifyDate and DateTimeOriginal from CreateDate."
+  (interactive)
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (jdyer-media--run-command "exiftool" "-overwrite_original" "-FileModifyDate<CreateDate" "-DateTimeOriginal<CreateDate" file)))
+
+;;;###autoload
+(defun jdyer-media-picture-tag-rename ()
+  "Rename file based on its tags and creation date."
+  (interactive)
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (let* ((date-info (jdyer-media-get-date file))
+           (prop (car date-info))
+           (val (cadr date-info))
+           (tags-out (shell-command-to-string (format "exiftool -s3 -TagsList %s" (shell-quote-argument file))))
+           (tags (string-trim tags-out)))
+      (when (and date-info (not (string-empty-p tags)))
+        (let* ((formatted-tags (replace-regexp-in-string "/" "@" (replace-regexp-in-string "," "-" tags)))
+               (formatted-date (jdyer-media-format-date val))
+               (parsed (jdyer-media--parse-filename file))
+               (label (cdr (assoc 'label parsed)))
+               (ext (cdr (assoc 'extension parsed)))
+               (basedir (cdr (assoc 'directory parsed)))
+               (new-base (format "%s--%s" formatted-date label))
+               (new-name (format "%s/%s__%s.%s" basedir new-base formatted-tags ext))
+               (final-name new-name)
+               (counter 1))
+          (while (file-exists-p final-name)
+            (setq final-name (format "%s/%s%d__%s.%s" basedir new-base counter formatted-tags ext))
+            (cl-incf counter))
+          (unless (string= (expand-file-name final-name) (expand-file-name file))
+            (message "%s -> %s" file final-name)
+            (rename-file file final-name)))))))
+
+;;;###autoload
+(defun jdyer-media-video-speed-up ()
+  "Speed up video 2x (removes audio)."
+  (interactive)
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (let* ((parsed (jdyer-media--parse-filename file))
+           (timestamp (format-time-string "%Y%m%d%H%M%S"))
+           (dst (concat (cdr (assoc 'directory parsed)) (cdr (assoc 'no-ext parsed)) "-sped-" timestamp ".mp4")))
+      (jdyer-media-convert-video file dst "-threads" "8" "-an" "-filter:v" "setpts=0.5*PTS" "-r" "30"))))
+
+;;;###autoload
+(defun jdyer-media-video-slow-down ()
+  "Slow down video 5x (removes audio)."
+  (interactive)
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (let* ((parsed (jdyer-media--parse-filename file))
+           (timestamp (format-time-string "%Y%m%d%H%M%S"))
+           (dst (concat (cdr (assoc 'directory parsed)) (cdr (assoc 'no-ext parsed)) "-slow-" timestamp ".mp4")))
+      (jdyer-media-convert-video file dst "-threads" "2" "-an" "-filter:v" "setpts=5*PTS" "-r" "30"))))
+
+;;;###autoload
+(defun jdyer-media-audio-normalise ()
+  "Normalise audio using sox."
+  (interactive)
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (let* ((parsed (jdyer-media--parse-filename file))
+           (dst (concat (cdr (assoc 'directory parsed)) (cdr (assoc 'no-ext parsed)) "-norm." (cdr (assoc 'extension parsed)))))
+      (jdyer-media--run-command "sox" "--norm=0" file dst))))
+
+;;;###autoload
+(defun jdyer-media-audio-trim-silence ()
+  "Trim silence from start and end of audio."
+  (interactive)
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (let* ((parsed (jdyer-media--parse-filename file))
+           (dst (concat (cdr (assoc 'directory parsed)) (cdr (assoc 'no-ext parsed)) "-trim.mp3")))
+      (jdyer-media--run-command "ffmpeg" "-hide_banner" "-loglevel" "warning" "-stats" "-y" "-i" file
+                                "-af" "silenceremove=start_periods=1:start_duration=1:start_threshold=-60dB:detection=peak,aformat=dblp,areverse,silenceremove=start_periods=1:start_duration=1:start_threshold=-60dB:detection=peak,aformat=dblp,areverse"
+                                dst))))
+
+;;;###autoload
+(defun jdyer-media-picture-crop (width height)
+  "Crop image to WIDTHxHEIGHT centered."
+  (interactive "nWidth: \nnHeight: ")
+  (let ((dim (format "%dx%d" width height)))
+    (jdyer-media-do-batch (jdyer-media-get-targets)
+      (jdyer-media-convert-image file file "-resize" (concat dim "^") "-gravity" "center" "-extent" dim))))
+
+;;;###autoload
+(defun jdyer-media-video-cut (start duration)
+  "Cut video from START for DURATION seconds."
+  (interactive "sStart (HH:MM:SS or sec): \nsDuration (sec): ")
+  (jdyer-media-do-batch (jdyer-media-get-targets)
+    (let* ((parsed (jdyer-media--parse-filename file))
+           (dst (concat (cdr (assoc 'directory parsed)) (cdr (assoc 'no-ext parsed)) "-cut." (cdr (assoc 'extension parsed)))))
+      (jdyer-media-convert-video file dst "-ss" start "-t" duration "-c" "copy"))))
+
+;;;###autoload
+(defun jdyer-media-video-to-mp4 ()
+  "Alias for video convert."
+  (interactive)
+  (call-interactively #'jdyer-media-video-convert))
+
+;;;###autoload
+(defun jdyer-media-completing-read-menu ()
+  "Execute media command using completing-read."
+  (interactive)
+  (let* ((commands '(("Picture Convert" . jdyer-media-picture-convert)
+                     ("Picture Crush (640px)" . jdyer-media-picture-crush)
+                     ("Picture Scale (1920px)" . jdyer-media-picture-scale)
+                     ("Picture Correct (Brighten)" . jdyer-media-picture-correct)
+                     ("Picture Auto Colour" . jdyer-media-picture-autocolour)
+                     ("Picture Crop" . jdyer-media-picture-crop)
+                     ("Picture Upscale (GAN)" . jdyer-media-picture-upscale)
+                     ("Picture Get Text (OCR)" . jdyer-media-picture-get-text)
+                     ("Picture To PDF" . jdyer-media-picture-to-pdf)
+                     ("Picture Tag (Interactive)" . jdyer-media-tag-interactive)
+                     ("Picture Tag Rename" . jdyer-media-picture-tag-rename)
+                     ("Picture Retag by Date" . jdyer-media-retag-by-date)
+                     ("Picture Info" . jdyer-media-picture-info)
+                     ("Video Convert" . jdyer-media-video-convert)
+                     ("Video Shrink" . jdyer-media-video-shrink)
+                     ("Video To GIF" . jdyer-media-video-to-gif)
+                     ("Video Trim (Top/Tail)" . jdyer-media-video-toptail)
+                     ("Video Cut" . jdyer-media-video-cut)
+                     ("Video Reverse" . jdyer-media-video-reverse)
+                     ("Video Speed Up" . jdyer-media-video-speed-up)
+                     ("Video Slow Down" . jdyer-media-video-slow-down)
+                     ("Video Extract Audio" . jdyer-media-video-extract-audio)
+                     ("Video Remove Audio" . jdyer-media-video-remove-audio)
+                     ("Video Info" . jdyer-media-video-info)
+                     ("Audio Convert" . jdyer-media-audio-convert)
+                     ("Audio Normalise" . jdyer-media-audio-normalise)
+                     ("Audio Trim Silence" . jdyer-media-audio-trim-silence)
+                     ("Audio Info" . jdyer-media-audio-info)))
+         (choice (completing-read "Media Command: " (mapcar #'car commands) nil t))
+         (func (cdr (assoc choice commands))))
+    (when func
+      (call-interactively func))))
+
+;; Transient Menu
+
+(require 'transient)
+
+(transient-define-prefix jdyer-media-menu ()
+  "Main menu for media management utilities."
+  ["Image Commands"
+   [("ic" "Convert" jdyer-media-picture-convert)
+    ("iz" "Crush (640px)" jdyer-media-picture-crush)
+    ("is" "Scale (1920px)" jdyer-media-picture-scale)
+    ("iu" "Upscale (GAN)" jdyer-media-picture-upscale)]
+   [("ir" "Rotate Right" jdyer-media-picture-rotate-right)
+    ("il" "Rotate Left" jdyer-media-picture-rotate-left)
+    ("ib" "Brighten" jdyer-media-picture-correct)
+    ("ia" "Auto Colour" jdyer-media-picture-autocolour)]
+   [("it" "Tag (Interactive)" jdyer-media-tag-interactive)
+    ("in" "Tag Rename" jdyer-media-picture-tag-rename)
+    ("id" "Retag by Date" jdyer-media-retag-by-date)
+    ("if" "Update from CreateDate" jdyer-media-picture-update-from-create-date)]
+   [("ip" "To PDF" jdyer-media-picture-to-pdf)
+    ("io" "OCR (Get Text)" jdyer-media-picture-get-text)
+    ("iC" "Crop" jdyer-media-picture-crop)
+    ("ii" "Info" jdyer-media-picture-info)]]
+  ["Video Commands"
+   [("vc" "Convert" jdyer-media-video-convert)
+    ("vs" "Shrink" jdyer-media-video-shrink)
+    ("vg" "To GIF" jdyer-media-video-to-gif)
+    ("va" "Extract Audio" jdyer-media-video-extract-audio)]
+   [("vt" "Top/Tail (Trim)" jdyer-media-video-toptail)
+    ("vk" "Cut" jdyer-media-video-cut)
+    ("vr" "Reverse" jdyer-media-video-reverse)
+    ("vR" "Rotate Right" jdyer-media-video-rotate-right)
+    ("vL" "Rotate Left" jdyer-media-video-rotate-left)]
+   [("v+" "Speed Up" jdyer-media-video-speed-up)
+    ("v-" "Slow Down" jdyer-media-video-slow-down)
+    ("vx" "Remove Audio" jdyer-media-video-remove-audio)
+    ("vi" "Info" jdyer-media-video-info)]]
+  ["Audio Commands"
+   [("ac" "Convert" jdyer-media-audio-convert)
+    ("an" "Normalise" jdyer-media-audio-normalise)
+    ("at" "Trim Silence" jdyer-media-audio-trim-silence)
+    ("ai" "Info" jdyer-media-audio-info)]]
+  ["Menus"
+   [("m" "Completing Read Menu" jdyer-media-completing-read-menu)]])
+
 (provide 'jdyer-media)
+
 ;;; jdyer-media.el ends here
