@@ -1,8 +1,0 @@
-#!/bin/bash
-source Common.sh
-
-for A in $FILES; do
-   pre
-   NEWFILE="${BASEDIR}/${FILE_NO_EXT}-norm.$EXT"
-   sox --norm=0 "$A" $NEWFILE
-done
