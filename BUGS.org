@@ -1,0 +1,16 @@
+#+title: BUGS/Improvements for Emacs config
+#+author: James Dyer
+#+email: captainflasmr@gmail.com
+#+language: en
+#+options: ':t toc:nil author:nil email:nil num:nil title:nil
+#+startup: showall
+
+This document contains the current bugs/improvements, this is just for me mainly but does include any Issues reported.
+
+* Bugs/Improvements
+
+** TODO do_backup taking a while at the end?
+
+** DOING do_backup rotating images
+
+** TODO bug gathering package
