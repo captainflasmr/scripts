@@ -1,4 +1,4 @@
-#+title: BUGS/Improvements for Emacs config
+#+title: BUGS/bin scripts directory
 #+author: James Dyer
 #+email: captainflasmr@gmail.com
 #+language: en
