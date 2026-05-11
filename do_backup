@@ -4,8 +4,6 @@ BACKUPDIR="$HOME/.Trash-rsync/$(date +%Y%m%d)"
 BASE="/run/media/jdyer"
 INC_FILE="$HOME/bin/do_backup_incl"
 
-IFS=,
-
 function list_filters ()
 {
     echo "dryrun   : $DRY"
@@ -19,15 +17,12 @@ function select_dir ()
 {
     select DIR in "$BASE"/*;
     do
-        case $DIR in
-            *)
-                break
-                ;;
-        esac
+        break
     done
 }
 
 function tidy_up() {
+    local IFS=,
     TYPES="webp,jpg,jpeg,png"
     VIDEO_TYPES="mp4,mov,avi,mkv,webm,m4v"
     DIRS="DCIM/Camera,DCIM/Screenshots,Snapseed"
@@ -50,6 +45,12 @@ function tidy_up() {
         source Common.sh
         
         pre
+        
+        # Skip if already processed (persistent xattr marker survives content changes)
+        if getfattr -d --absolute-names "$A" 2>/dev/null | grep -q 'user.do_backup.processed'; then
+            return 0
+        fi
+        
         checksum=$(md5sum "$A" | awk '{ print $1 }')
         
         # Simple check (note: this has potential race conditions)
@@ -73,6 +74,9 @@ function tidy_up() {
                 convert_it "$A" -auto-orient -strip -quality 50% "$TRUNCNAME"
             fi
         fi
+        
+        # Mark as processed with persistent xattr (survives checksum changes from later edits)
+        setfattr -n user.do_backup.processed -v 1 "$TRUNCNAME" 2>/dev/null
         
         checksum=$(md5sum "$TRUNCNAME" | awk '{ print $1 }')
         echo "$checksum $TRUNCNAME" >> "$log_file"
@@ -159,7 +163,6 @@ function tidy_up() {
         echo
         echo "**************** Checking $DIR for images"
         echo
-        IFS=,
         for TYPE in $TYPES; do
             echo "Processing $TYPE files in $DIR..."
             
@@ -179,7 +182,6 @@ function tidy_up() {
         echo
         echo "**************** Checking $DIR for videos"
         echo
-        IFS=,
         for TYPE in $VIDEO_TYPES; do
             echo "Processing $TYPE files in $DIR..."
             
@@ -218,7 +220,9 @@ function do_it ()
         rsync -rltsiPv --no-g --copy-links --delete --size-only --modify-window=4
         --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*'
         --exclude-from="$HOME/bin/do_backup_excl"
+        "${EXTRA_EXCLUDES[@]}"
     )
+    EXTRA_EXCLUDES=()
 
     if [[ ! -d "$SRC" ]]; then
         echo
@@ -266,8 +270,7 @@ function do_it ()
         cd "$DST" || return 1
         ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S2"
         diff --side-by-side --suppress-common-lines "$S1" "$S2"
-        # rm -f "$S1"
-        # rm -f "$S2"
+        rm -f "$S1" "$S2"
     fi
 
     echo
@@ -287,10 +290,10 @@ function backup_home ()
     DATE=$(date +%Y%m%d)
     MONTH=$(date +%m)
     DAY=$(date +%d)
-    MAIL_FILE=$HOME/MAIL
-    cd $HOME
+    MAIL_FILE="$HOME/MAIL"
+    cd "$HOME"
     if [[ $DAY = "07" || $DAY = "14" || $DAY = "21" || $DAY = "28" ]]; then
-        if [[ ! -f $MAIL_FILE ]]; then
+        if [[ ! -f "$MAIL_FILE" ]]; then
             echo
             echo "---------- Doing Maildir ----------"
             echo
@@ -298,30 +301,30 @@ function backup_home ()
             echo
             echo "---------- Done Maildir ----------"
             echo
-            touch $MAIL_FILE
+            touch "$MAIL_FILE"
         fi
     else
-        rm -f $MAIL_FILE
+        rm -f "$MAIL_FILE"
     fi
 
     # backup other things
-    ARC_FILE=$HOME/ARCHIVE
+    ARC_FILE="$HOME/ARCHIVE"
     if [[ $MONTH = "11" ]]; then
-        if [[ ! -f $ARC_FILE ]]; then
-            TARGET=~/nas/Archive/Documents/"$DATE"
-            mkdir -p $TARGET
+        if [[ ! -f "$ARC_FILE" ]]; then
+            TARGET="$HOME/nas/Archive/Documents/$DATE"
+            mkdir -p "$TARGET"
             rsync -avP --no-g ~/DCIM/content/RedSaucers.kdbx \
-                  $TARGET/"$DATE"--RedSaucers.kdbx
+                  "$TARGET/$DATE--RedSaucers.kdbx"
             # rsync -avP --no-g ~/DCIM/Volume \
                   # $TARGET/"$DATE"--Volume
             rsync -avP --no-g ~/Maildir.tar.gz \
-                  $TARGET/"$DATE"--Maildir.tar.gz
+                  "$TARGET/$DATE--Maildir.tar.gz"
             rsync -avP --no-g ~/DCIM/Backup/Contacts.vcf \
-                  $TARGET/"$DATE"--Contacts.vcf
-            touch $ARC_FILE
+                  "$TARGET/$DATE--Contacts.vcf"
+            touch "$ARC_FILE"
         fi
     else
-        rm -f $ARC_FILE
+        rm -f "$ARC_FILE"
     fi
     tidy_up
     # SRC="$HOME"
@@ -329,7 +332,6 @@ function backup_home ()
     # do_it
     SRC="$HOME"
     DST="$HOME/nas/Home"
-    INC_FILE="$HOME/bin/do_backup_incl"
     do_it
 }
 
@@ -348,41 +350,35 @@ do
             break
             ;;
         usb-home)
-            select QUICK in $BASE/*;
+            select QUICK in "$BASE"/*;
             do
-                case QUICK in
-                    *)
-                        DRY=0
-                        INC=1
-                        TRASH=0
-                        SANITY=0
-                        EXCL=1
-                        SRC="$HOME"
-                        DST="$QUICK/Home"
-                        do_it
-                        exit
-                        ;;
-                esac
+                DRY=0
+                INC=1
+                TRASH=0
+                SANITY=0
+                EXCL=1
+                SRC="$HOME"
+                DST="$QUICK/Home"
+                do_it
+                exit
             done
             ;;
         ventoy)
-            RSYNC_CMD=(
-                rsync -rltsiPv --no-g --copy-links --delete --modify-window=4
-                --exclude '.Trash*' --exclude 'nas' --exclude 'python3.9' --exclude 'kate' --exclude 'plasma' --exclude '.git'
-                --exclude '#recycle*' --exclude '_recycle*' --exclude 'Photos' --exclude 'Maildir' --exclude '.thunderbird'
-                --exclude 'Volume' --exclude 'Videos' --exclude 'KritaRecorder' --exclude 'Reference' --exclude 'music'
-                --exclude-from="$HOME/bin/do_backup_excl"
+            DRY=0
+            INC=1
+            TRASH=0
+            SANITY=0
+            EXCL=1
+            EXTRA_EXCLUDES=(
+                --exclude 'nas' --exclude 'python3.9' --exclude 'kate'
+                --exclude 'plasma' --exclude '.git' --exclude 'Photos'
+                --exclude 'Maildir' --exclude '.thunderbird' --exclude 'Volume'
+                --exclude 'Videos' --exclude 'KritaRecorder' --exclude 'Reference'
+                --exclude 'music'
             )
-
             SRC="$HOME"
             DST="$BASE/Ventoy/Home"
-
-            RSYNC_CMD+=(--files-from="${INC_FILE}")
-            RSYNC_CMD+=(--delete-excluded)
-            RSYNC_CMD+=("${SRC}/" "${DST}/")
-
-            echo "${RSYNC_CMD[*]}"
-            "${RSYNC_CMD[@]}"
+            do_it
             exit
             ;;
         disks)
@@ -419,7 +415,3 @@ do
             ;;
     esac
 done
-
-echo
-echo "Finished"
-echo
