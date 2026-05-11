@@ -1,0 +1,115 @@
+#!/bin/bash
+ACTION=$1
+TYPE=$2
+
+OUTPUT_DIR="$HOME/publish/obp-output"
+OBP_LIB="$HOME/.emacs.d/offline-packages/local-packages/org-bootstrap-publish"
+
+CF_ZONE_DYERDWELLING="${CF_ZONE_DYERDWELLING:-}"
+CF_ZONE_ART="${CF_ZONE_ART:-}"
+CF_ZONE_KATIEBOO85="${CF_ZONE_KATIEBOO85:-}"
+CF_ZONE_EMACS="${CF_ZONE_EMACS:-}"
+
+case $TYPE in
+    dyerdwelling|art|katieboo85|emacs) ;;
+    *)  if [[ $ACTION != "publish" || $TYPE != "all" ]]; then
+            echo "Unknown site: $TYPE (expected: dyerdwelling, art, katieboo85, emacs)"
+            exit 1
+        fi ;;
+esac
+
+if [[ $ACTION = "publish" && $TYPE = "all" ]]; then
+    declare -a results
+    for item in dyerdwelling art emacs katieboo85; do
+        echo ""
+        echo "========== Publishing $item =========="
+        web publish "$item"
+        results+=("$item:$?")
+    done
+    echo
+    echo "===== publish all summary ====="
+    failed=0
+    for r in "${results[@]}"; do
+        site="${r%:*}"
+        code="${r#*:}"
+        if [[ $code -eq 0 ]]; then
+            printf "  %-14s OK\n" "$site"
+        else
+            printf "  %-14s FAILED (exit %d)\n" "$site" "$code"
+            failed=$((failed + 1))
+        fi
+    done
+    echo "==============================="
+    if [[ $failed -gt 0 ]]; then
+        echo "$failed site(s) failed"
+        exit 1
+    else
+        echo "all sites published"
+        exit 0
+    fi
+fi
+
+case $ACTION in
+    update)
+        echo "$TYPE : building with org-bootstrap-publish..."
+        emacs --batch \
+            -L "$OBP_LIB" \
+            --eval "(progn
+                      (load \"$HOME/.emacs.d/obp-config.el\")
+                      (org-bootstrap-publish-use-site '$TYPE)
+                      (org-bootstrap-publish))"
+        ;;
+    publish)
+        web update "$TYPE"
+        echo "$TYPE : publishing..."
+        case $TYPE in
+            dyerdwelling)   PROJ=dyerdwelling ;;
+            art)            PROJ=art-dyerdwelling ;;
+            katieboo85)     PROJ=katieboo85 ;;
+            emacs)          PROJ=emacs-dyerdwelling ;;
+        esac
+        wrangler pages deploy "$OUTPUT_DIR" --project-name="$PROJ" --commit-dirty=true --branch=production
+        ;;
+    clean)
+        echo "$TYPE : cleaning remote Cloudflare Pages..."
+        TMPDIR=$(mktemp -d)
+        echo "Site cleaned - redeploy pending" > "$TMPDIR/index.html"
+        case $TYPE in
+            dyerdwelling)   PROJ=dyerdwelling ;;
+            art)            PROJ=art-dyerdwelling ;;
+            katieboo85)     PROJ=katieboo85 ;;
+            emacs)          PROJ=emacs-dyerdwelling ;;
+        esac
+        wrangler pages deploy "$TMPDIR" --project-name="$PROJ" --commit-dirty=true --branch=production
+        rm -rf "$TMPDIR"
+        echo "$TYPE : clean complete - run 'web publish $TYPE' to redeploy"
+        ;;
+    flush)
+        echo "$TYPE : purging Cloudflare cache..."
+        case $TYPE in
+            dyerdwelling)   ZONE_ID="$CLOUDFLARE_ZONE_DYERDWELLING" ;;
+            art)            ZONE_ID="$CF_ZONE_ART" ;;
+            katieboo85)     ZONE_ID="$CF_ZONE_KATIEBOO85" ;;
+            emacs)          ZONE_ID="$CF_ZONE_EMACS" ;;
+        esac
+
+        if [[ -z "$ZONE_ID" ]]; then
+            echo "Error: CLOUDFLARE_ZONE_${TYPE^^} not set."
+            exit 1
+        fi
+        if [[ -z "$CLOUDFLARE_API_TOKEN" ]]; then
+            echo "Error: CLOUDFLARE_API_TOKEN not set."
+            exit 1
+        fi
+
+        curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}' | jq .
+        ;;
+    *)
+        echo "Usage: web <update|publish|clean|flush> <site|all>"
+        echo "Sites: dyerdwelling, art, katieboo85, emacs"
+        exit 1
+        ;;
+esac
