@@ -259,7 +259,7 @@ function do_it ()
     list_filters
     echo "${RSYNC_CMD[*]}"
     
-    "${RSYNC_CMD[@]}" | grep -v "$FILTERSTR"
+    "${RSYNC_CMD[@]}" | stdbuf -oL grep -v "$FILTERSTR"
 
     if [[ $SANITY == 1 ]]; then
         echo "Sanity Check $SRC -> $DST ...."
@@ -326,19 +326,48 @@ function backup_home ()
     else
         rm -f "$ARC_FILE"
     fi
-    tidy_up
-    # SRC="$HOME"
-    # INC_FILE="$HOME/bin/do_backup_incl_local"
-    # do_it
+
+    # Main backup
     SRC="$HOME"
     DST="$HOME/nas/Home"
+    START_TS=$(date +%s)
     do_it
+    ELAPSED=$(( $(date +%s) - START_TS ))
+    echo "Backup of home to nas/Home completed in $(date -d@$ELAPSED -u +%H:%M:%S)"
+}
+
+SKIP_TIDY=0
+ARGS=()
+for arg in "$@"; do
+    case $arg in
+        --skip-tidy) SKIP_TIDY=1 ;;
+        *) ARGS+=("$arg") ;;
+    esac
+done
+set -- "${ARGS[@]}"
+
+function do_backup_home ()
+{
+    if [[ $SKIP_TIDY == 0 ]]; then
+        echo "=========================================="
+        echo "Pre-processing images and videos..."
+        echo "(run 'do_backup --skip-tidy' to skip this)"
+        echo "=========================================="
+        tidy_up
+    else
+        echo "Skipping image/video pre-processing."
+    fi
+    backup_home
 }
 
 cd "$HOME/nas" || exit
 
 if [[ $# -gt 0 ]]; then
-    backup_home
+    if [[ $1 == "home" ]]; then
+        do_backup_home
+    else
+        backup_home
+    fi
     exit
 fi
 
@@ -346,7 +375,7 @@ select PRESET in home usb-home ventoy disks $BASE/*;
 do
     case $PRESET in
         home)
-            backup_home
+            do_backup_home
             break
             ;;
         usb-home)
