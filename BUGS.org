@@ -9,8 +9,4 @@ This document contains the current bugs/improvements, this is just for me mainly
 
 * Bugs/Improvements
 
-** TODO do_backup taking a while at the end?
-
-** DOING do_backup rotating images
-
-** TODO bug gathering package
+** DOING bug gathering package
