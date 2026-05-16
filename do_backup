@@ -297,7 +297,9 @@ function backup_home ()
             echo
             echo "---------- Doing Maildir ----------"
             echo
-            tar zcf Maildir.tar.gz .thunderbird
+            tar zcf Maildir.tar.gz .thunderbird Maildir \
+                --exclude='Maildir/*/tmp' \
+                --exclude='Maildir/*/*/tmp'
             echo
             echo "---------- Done Maildir ----------"
             echo

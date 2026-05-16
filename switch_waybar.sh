@@ -8,7 +8,7 @@ CONFIGS=(
     # "$CONFIG_DIR/waybar_custom"   # Add your third config here
 )
 
-CONFIG_FILE="$CONFIG_DIR/WAYBAR"   # Stores the current config path
+CONFIG_FILE="$CONFIG_DIR/waybar_active"   # Stores the current config path
 
 # Initialize CONFIG_FILE if it doesn't exist
 if [[ ! -f $CONFIG_FILE ]]; then

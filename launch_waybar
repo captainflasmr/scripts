@@ -21,7 +21,7 @@ cleanup() {
 start_waybar() {
     echo "Restarting waybar..."
     killall waybar 2>/dev/null
-    CONFIG_FILE="/home/jdyer/.config/WAYBAR"
+    CONFIG_FILE="/home/jdyer/.config/waybar_active"
     CONFIG_GARUDA="/home/jdyer/.config/waybar_garuda"
     CONFIG_JDYER="/home/jdyer/.config/waybar_jdyer"
 

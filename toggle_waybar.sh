@@ -8,7 +8,7 @@ if pgrep -x waybar > /dev/null; then
    killall waybar
 else
    # If Waybar is not running, start it
-   CONFIG_FILE="/home/jdyer/.config/WAYBAR"
+   CONFIG_FILE="/home/jdyer/.config/waybar_active"
    CONFIG_GARUDA="/home/jdyer/.config/waybar_garuda"
    CONFIG_JDYER="/home/jdyer/.config/waybar_jdyer"
 

@@ -46,7 +46,7 @@ clean_directory() {
 # Function to clean tagged directory
 clean_tagged_directory() {
     echo "========== CLEANING TAGGED DIRECTORY =========="
-    clean_directory "$HOME/publish/hugo-unified/static/tagged" "Tagged directory"
+    clean_directory "$HOME/DCIM/content/static/tagged" "Tagged directory"
 }
 
 # Function to clean all image destination directories
@@ -55,15 +55,15 @@ clean_image_destinations() {
     
     # Clean art gallery directories
     echo "Cleaning art gallery directories..."
-    clean_directory "$HOME/publish/hugo-unified/static/art--gallery" "Art gallery"
+    clean_directory "$HOME/DCIM/content/static/art--gallery" "Art gallery"
     
     # Clean scans directories
     echo "Cleaning scans directories..."
-    clean_directory "$HOME/publish/hugo-unified/static/scans" "Scans"
+    clean_directory "$HOME/DCIM/content/static/scans" "Scans"
     
     # Clean photos directories (by year)
     echo "Cleaning photos directories..."
-    photos_base="$HOME/publish/hugo-unified/static/photos"
+    photos_base="$HOME/DCIM/content/static/photos"
     if [[ -d "$photos_base" ]]; then
         for year_dir in $(find "$photos_base" -mindepth 1 -maxdepth 1 -type d); do
             echo "Cleaning photos for year: $(basename $year_dir)"
@@ -187,7 +187,7 @@ sync_content() {
     esac
 }
 
-SRC_DIR="/mnt/local/Photos/2025"
+SRC_DIR="/home/jdyer/nas"
 validate_directory "$SRC_DIR"
 cd "$SRC_DIR"
 
@@ -198,6 +198,7 @@ while true; do
     echo "2. Sync"
     echo "3. Clean"
     echo "4. Regenerate"
+    echo "5. Process Images"
     read -p "Enter your choice: " MAIN_CHOICE
 
     case $MAIN_CHOICE in
@@ -212,8 +213,12 @@ while true; do
             ;;
         4)
             echo "Running tagged_thumbnail_update.sh..."
-            cd $HOME/publish/hugo-unified/static/tagged
+            cd $HOME/DCIM/content/static/tagged
             run_command tagged_thumbnail_update.sh
+            ;;
+        5)
+            echo "Running images.sh..."
+            run_command images.sh
             ;;
         q)
             break

@@ -15,7 +15,7 @@ export IFS=" "
 for DIR in $LIST; do
    SRC="$HOME/Photos/Gallery/${DIR}"
    # DST="/run/media/jdyer/6665-3063/img-cat"
-   DST="/home/jdyer/publish/hugo-unified/static/tagged"
+   DST="/home/jdyer/DCIM/content/static/tagged"
    # rm -fr $DST/*.jpg
    resize_images
 done
@@ -25,7 +25,7 @@ export IFS=" "
 for DIR in $LIST; do
    SRC="$HOME/Photos/Scans/${DIR}"
    # DST="/run/media/jdyer/6665-3063/img-cat"
-   DST="/home/jdyer/publish/hugo-unified/static/tagged"
+   DST="/home/jdyer/DCIM/content/static/tagged"
    # rm -fr $DST/*.jpg
    resize_images
 done
@@ -34,7 +34,7 @@ export IFS=" "
 for DIR in {2003..2023}; do
    SRC="$HOME/Photos/${DIR}"
    # DST="/run/media/jdyer/6665-3063/img-cat"
-   DST="/home/jdyer/publish/hugo-unified/static/tagged"
+   DST="/home/jdyer/DCIM/content/static/tagged"
    # rm -fr $DST/*.jpg
    resize_images
 done

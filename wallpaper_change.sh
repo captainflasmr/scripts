@@ -21,10 +21,16 @@ wal -i ~/.last_wallpaper.jpg -q -n
 # Load colors from pywal
 colors=$(cat ~/.cache/wal/colors.json)
 
-# Extracting colors
 fg=$(echo $colors | jq -r '.special.foreground')
 bg=$(echo $colors | jq -r '.special.background')
+c1=$(echo $colors | jq -r '.colors.color1')
+c4=$(echo $colors | jq -r '.colors.color4')
+c5=$(echo $colors | jq -r '.colors.color5')
+c6=$(echo $colors | jq -r '.colors.color6')
+c8=$(echo $colors | jq -r '.colors.color8')
 
 # Update sway window decorations
-swaymsg client.focused "$fg" "$fg" "$fg" "$fg" "$fg"
-swaymsg client.focused_inactive "$bg" "$bg" "$bg" "$bg" "$bg"
+swaymsg client.focused          "$fg" "$bg" "$fg" "$c5" "$c6"
+swaymsg client.focused_inactive "$c8" "$bg" "$c8" "$c4" "$c4"
+swaymsg client.unfocused         "$c8" "$bg" "$c8" "$c4" "$c4"
+swaymsg client.urgent            "$c1" "$c1" "$bg" "$fg" "$c1"

@@ -19,8 +19,6 @@
 .config/icedrive
 .config/libvirt
 .emacs.d/.git
-.emacs.d/Emacs-DIYer
-.emacs.d/Emacs-vanilla
 .emacs.d/eca
 .emacs.d/eln-cache
 .emacs.d/elpa

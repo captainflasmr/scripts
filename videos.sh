@@ -1,7 +1,8 @@
 #!/bin/bash
 # Resize any video directory named by SRC and send to DST ready to upload to my Web Site!
 
-PHOTOS_SRC="/mnt/local/Photos"
+PHOTOS_SRC="/home/jdyer/nas/Photos"
+
 PARALLEL_JOBS=$(($(nproc) / 2))  # Use half the cores for video processing
 
 function resize_videos() {

@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# PHOTOS_SRC="/run/media/jdyer/Backup/Photos"
-PHOTOS_SRC="/mnt/local/Photos"
+PHOTOS_SRC="/home/jdyer/nas/Photos"
 
 export IFS=";"
 
@@ -43,7 +42,7 @@ function resize_images_standard() {
 
 function resize_images_tagged() {
     cd "$SRC"
-    DST="$HOME/publish/hugo-unified/content/tagged"
+    DST="$HOME/DCIM/content/content/tagged"
     mkdir -p "$DST"
     
     # Function to process a single file in tagged mode
@@ -95,9 +94,9 @@ function process_art() {
         echo "$DIR"
         SRC="${PHOTOS_SRC}/Gallery/${DIR}"
         if [[ "$ORGANIZATION_MODE" == "tagged" ]]; then
-            DST="$HOME/publish/hugo-unified/static/tagged"
+            DST="$HOME/DCIM/content/static/tagged"
         else
-            DST="$HOME/publish/hugo-unified/static/art--gallery/${DIR}"
+            DST="$HOME/DCIM/content/static/art--gallery/${DIR}"
         fi
         resize_images
     done
@@ -112,9 +111,9 @@ function process_scans() {
         echo "$DIR"
         SRC="${PHOTOS_SRC}/Scans/${DIR}"
         if [[ "$ORGANIZATION_MODE" == "tagged" ]]; then
-            DST="$HOME/publish/hugo-unified/static/tagged"
+            DST="$HOME/DCIM/content/static/tagged"
         else
-            DST="$HOME/publish/hugo-unified/static/scans/${DIR}"
+            DST="$HOME/DCIM/content/static/scans/${DIR}"
         fi
         resize_images
     done
@@ -141,9 +140,9 @@ function process_photos() {
                     echo "Processing $FOLDER"
                     SRC="${PHOTOS_SRC}/${YEAR}/${FOLDER}"
                     if [[ "$ORGANIZATION_MODE" == "tagged" ]]; then
-                        DST="$HOME/publish/hugo-unified/static/tagged"
+                        DST="$HOME/DCIM/content/static/tagged"
                     else
-                        DST="$HOME/publish/hugo-unified/static/photos/${YEAR}"
+                        DST="$HOME/DCIM/content/static/photos/${YEAR}"
                     fi
                     resize_images
                 fi
@@ -192,9 +191,9 @@ function process_photos() {
                     echo "  Processing $FOLDER"
                     SRC="${PHOTOS_SRC}/${YEAR}/${FOLDER}"
                     if [[ "$ORGANIZATION_MODE" == "tagged" ]]; then
-                        DST="$HOME/publish/hugo-unified/static/tagged"
+                        DST="$HOME/DCIM/content/static/tagged"
                     else
-                        DST="$HOME/publish/hugo-unified/static/photos/${YEAR}"
+                        DST="$HOME/DCIM/content/static/photos/${YEAR}"
                     fi
                     resize_images
                 done
