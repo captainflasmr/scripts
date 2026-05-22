@@ -1,6 +1,6 @@
 #!/bin/bash
 
-wallpaper_path="$(find ~/wallpaper -type f | shuf -n 1)"
+wallpaper_path="$(find ~/wallpaper/transformers -type f | shuf -n 1)"
 
 # Save current wallpaper as previous before overwriting
 if [ -f ~/.last_wallpaper_path ]; then
@@ -10,13 +10,9 @@ fi
 echo $wallpaper_path > ~/.last_wallpaper_path
 cp -f $wallpaper_path ~/.last_wallpaper.jpg
 
-if [[ $XDG_SESSION_TYPE == "x11" ]]; then
-    feh --bg-scale "$wallpaper_path"
-fi
-
 if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
     pkill swaybg
-    swaybg -i "$wallpaper_path" &
+    swaybg -i "$wallpaper_path" -m fill &
 fi
 
 # lets run pywal for colour scheme generation
