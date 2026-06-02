@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+#
+# nas-bypass - keep NAS-subnet traffic off the Surfshark VPN tunnel.
+#
+# A full-tunnel VPN steals the default route, so packets bound for the
+# NAS (on a different subnet, reachable only via the local router) get
+# fired into the tunnel and vanish. With a hard NFS mount that freezes
+# Thunar / Deluge / anything touching ~/nas. This adds an explicit route
+# for the NAS subnet so it always goes via the local router instead.
+#
+# Surfshark uses WireGuard-style policy routing (suppress_prefixlength 0),
+# which honours specific routes over the tunnel's default route, so this
+# reliably wins.
+#
+# Usage:
+#   nas-bypass status     # show current routing to the NAS (default)
+#   nas-bypass apply       # add a persistent route to the NM Wi-Fi profile
+#   nas-bypass remove      # remove that route again
+#
+# Override the defaults below via environment variables if needed.
+
+set -euo pipefail
+
+CONN="${NAS_BYPASS_CONN:-STRONG_ATRIA_F6NF}"   # NetworkManager connection name
+SUBNET="${NAS_BYPASS_SUBNET:-192.168.0.0/24}"  # NAS subnet
+GATEWAY="${NAS_BYPASS_GATEWAY:-192.168.7.254}"  # local router
+NAS_IP="${NAS_BYPASS_NAS_IP:-192.168.0.10}"     # a host to test the path to
+
+ROUTE="$SUBNET $GATEWAY"
+
+status() {
+  echo "Connection : $CONN"
+  echo "Route      : $ROUTE"
+  echo
+  echo "Routes currently on the profile:"
+  nmcli -g ipv4.routes connection show "$CONN" 2>/dev/null || echo "  (connection not found)"
+  echo
+  echo "Live path to $NAS_IP:"
+  ip route get "$NAS_IP" 2>/dev/null || echo "  (unreachable)"
+  echo
+  echo "Tip: with the VPN connected this should say 'via $GATEWAY' and"
+  echo "     NOT mention a wg/tun device. If it does, the bypass is working."
+}
+
+apply() {
+  echo "Adding route '$ROUTE' to '$CONN'..."
+  sudo nmcli connection modify "$CONN" +ipv4.routes "$ROUTE"
+  sudo nmcli connection up "$CONN"
+  echo
+  status
+}
+
+remove() {
+  echo "Removing route '$ROUTE' from '$CONN'..."
+  sudo nmcli connection modify "$CONN" -ipv4.routes "$ROUTE"
+  sudo nmcli connection up "$CONN"
+  echo "Done."
+}
+
+case "${1:-status}" in
+  status) status ;;
+  apply)  apply ;;
+  remove) remove ;;
+  *)
+    echo "Usage: $(basename "$0") {status|apply|remove}" >&2
+    exit 1
+    ;;
+esac
