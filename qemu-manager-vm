@@ -1,0 +1,313 @@
+#!/usr/bin/env bash
+#
+# qemu-manager-vm --- start/stop QEMU VMs independently of Emacs.
+#
+# A standalone companion to qemu-manager.el.  It reads the same
+# ~/VM/<name>/vm.conf files and writes the same pidfiles, so a VM
+# started here is fully decoupled from Emacs's lifecycle yet still
+# shows up (and can be stopped/connected to) from `qemu-manager-list'.
+#
+# Because it is launched from your login shell -- not as an Emacs child
+# -- the VM never shares Emacs's process tree or cgroup.  When a systemd
+# user manager is available the VM runs as a transient *user service*
+# (so it also survives this shell exiting); this requires user lingering
+# (`loginctl enable-linger <user>`).  Without systemd it falls back to
+# `setsid`/`nohup`.
+#
+# Usage:
+#   qemu-manager-vm start   <name> [--offline]
+#   qemu-manager-vm run     <name> [--offline]   # start (if needed) + open viewer
+#   qemu-manager-vm view    <name>               # open viewer for a running VM
+#   qemu-manager-vm stop    <name>
+#   qemu-manager-vm status  <name>
+#   qemu-manager-vm list
+#   qemu-manager-vm print   <name> [--offline]   # show the QEMU command, don't run
+#
+# The viewer is chosen from VM_DISPLAY (vnc -> vncviewer, spice -> spicy) and
+# launched detached, so it stays open after the script returns.  Override the
+# viewer binaries with QEMU_MANAGER_VNC_VIEWER / QEMU_MANAGER_SPICE_VIEWER.
+#
+set -euo pipefail
+
+BASE_DIR="${QEMU_MANAGER_BASE_DIR:-$HOME/VM}"
+QEMU_BIN="${QEMU_MANAGER_QEMU:-qemu-system-x86_64}"
+
+# ---- defaults (match qemu-manager.el) --------------------------------------
+DEF_MEMORY="4G"
+DEF_CPUS="4"
+DEF_SSH_PORT="2222"
+DEF_VNC_DISPLAY="1"
+DEF_SPICE_PORT="5930"
+DEF_DISPLAY="vnc"
+DEF_USER="$(id -un)"
+DEF_SHARE_TAG="hostshare"
+
+# ---- viewers (match qemu-manager.el) ---------------------------------------
+VNC_VIEWER="${QEMU_MANAGER_VNC_VIEWER:-vncviewer}"
+SPICE_VIEWER="${QEMU_MANAGER_SPICE_VIEWER:-spicy}"
+VNC_VIEWER_ARGS=(-RemoteResize=1)
+
+die() { echo "qemu-manager-vm: $*" >&2; exit 1; }
+
+vm_dir()      { echo "$BASE_DIR/$1"; }
+vm_conf()     { echo "$BASE_DIR/$1/vm.conf"; }
+vm_disk()     { echo "$BASE_DIR/$1/disk.qcow2"; }
+vm_pid()      { echo "$BASE_DIR/$1/qemu-manager.pid"; }
+vm_log()      { echo "$BASE_DIR/$1/qemu.log"; }
+vfsd_pid()    { echo "$BASE_DIR/$1/virtiofsd.pid"; }
+vfsd_sock()   { echo "$BASE_DIR/$1/virtiofs.sock"; }
+vfsd_log()    { echo "$BASE_DIR/$1/virtiofsd.log"; }
+
+# sanitise a VM name into a systemd unit base name
+unit_name() { # kind name
+  local n="${2//[^a-zA-Z0-9_.-]/-}"
+  echo "qemu-manager-$1-$n"
+}
+
+# read KEY="value" from vm.conf; echoes value or empty
+conf_get() { # name key
+  local f; f="$(vm_conf "$1")"
+  [ -f "$f" ] || return 0
+  sed -n "s/^$2=\"\\(.*\\)\"\$/\\1/p" "$f" | head -n1
+}
+
+pid_alive() { [ -n "${1:-}" ] && kill -0 "$1" 2>/dev/null; }
+
+read_pid() { # pidfile
+  [ -f "$1" ] || return 1
+  local p; p="$(tr -d '[:space:]' < "$1")"
+  [ -n "$p" ] && echo "$p"
+}
+
+have_systemd() { command -v systemd-run >/dev/null 2>&1 && [ -n "${XDG_RUNTIME_DIR:-}" ]; }
+
+lingering_on() {
+  [ "$(loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null)" = "yes" ]
+}
+
+# Launch CMD... fully detached; write its real pid to PIDFILE, output to LOGFILE.
+# Args: unit pidfile logfile -- program [args...]
+launch_detached() {
+  local unit="$1" pidfile="$2" logfile="$3"; shift 3
+  [ "$1" = "--" ] && shift
+  rm -f "$pidfile"
+  if have_systemd; then
+    local service="$unit.service"
+    systemctl --user reset-failed "$service" 2>/dev/null || true
+    systemd-run --user --collect --unit="$service" \
+      --property=StandardOutput="truncate:$logfile" \
+      --property=StandardError="truncate:$logfile" \
+      -- "$@"
+    # capture the real MainPID
+    local tries=0 mainpid="0"
+    while [ "$tries" -lt 60 ] && { [ "$mainpid" = "0" ] || [ -z "$mainpid" ]; }; do
+      sleep 0.1
+      mainpid="$(systemctl --user show -P MainPID --value "$service" 2>/dev/null || echo 0)"
+      tries=$((tries + 1))
+    done
+    [ "$mainpid" != "0" ] && [ -n "$mainpid" ] || die "service $service failed to start; see $logfile"
+    echo "$mainpid" > "$pidfile"
+  else
+    # no systemd: own session via setsid, output to logfile
+    setsid sh -c 'echo $$ > "$1"; shift; exec "$@" </dev/null >"'"$logfile"'" 2>&1' \
+      _ "$pidfile" "$@" &
+    local tries=0
+    while [ "$tries" -lt 60 ] && [ ! -f "$pidfile" ]; do sleep 0.1; tries=$((tries + 1)); done
+  fi
+}
+
+find_virtiofsd() {
+  command -v virtiofsd 2>/dev/null && return 0
+  for c in /usr/lib/virtiofsd /usr/libexec/virtiofsd /usr/lib/qemu/virtiofsd; do
+    [ -x "$c" ] && { echo "$c"; return 0; }
+  done
+  echo virtiofsd
+}
+
+start_virtiofsd() { # name share_path
+  local name="$1" share="$2"
+  [ -d "$share" ] || die "share path does not exist: $share"
+  local sock; sock="$(vfsd_sock "$name")"
+  rm -f "$sock"
+  local bin; bin="$(find_virtiofsd)"
+  launch_detached "$(unit_name virtiofsd "$name")" "$(vfsd_pid "$name")" "$(vfsd_log "$name")" \
+    -- "$bin" "--socket-path=$sock" "--shared-dir=$share" --cache=auto --sandbox=none
+  # wait for the socket
+  local tries=0
+  while [ "$tries" -lt 30 ] && [ ! -S "$sock" ]; do sleep 0.1; tries=$((tries + 1)); done
+  [ -S "$sock" ] || die "virtiofsd failed to start; see $(vfsd_log "$name")"
+}
+
+build_args() { # name offline   -> prints QEMU args, one per line
+  local name="$1" offline="$2"
+  local mem cpus ssh vnc spice disp share tag
+  mem="$(conf_get "$name" VM_MEMORY)";        mem="${mem:-$DEF_MEMORY}"
+  cpus="$(conf_get "$name" VM_CPUS)";         cpus="${cpus:-$DEF_CPUS}"
+  ssh="$(conf_get "$name" VM_SSH_PORT)";      ssh="${ssh:-$DEF_SSH_PORT}"
+  vnc="$(conf_get "$name" VM_VNC_DISPLAY)";   vnc="${vnc:-$DEF_VNC_DISPLAY}"
+  spice="$(conf_get "$name" VM_SPICE_PORT)";  spice="${spice:-$DEF_SPICE_PORT}"
+  disp="$(conf_get "$name" VM_DISPLAY)";      disp="${disp:-$DEF_DISPLAY}"
+  share="$(conf_get "$name" SHARE_PATH)"
+  tag="$(conf_get "$name" SHARE_TAG)";        tag="${tag:-$DEF_SHARE_TAG}"
+
+  printf '%s\n' -enable-kvm -m "$mem" -smp "$cpus" -cpu host \
+    -drive "file=$(vm_disk "$name"),format=qcow2"
+
+  if [ "$offline" = "1" ]; then
+    printf '%s\n' -nic none
+  else
+    printf '%s\n' -nic "user,hostfwd=tcp::$ssh-:22"
+  fi
+
+  if [ -n "$share" ]; then
+    printf '%s\n' -object "memory-backend-memfd,id=mem,size=$mem,share=on" \
+      -numa node,memdev=mem \
+      -chardev "socket,id=char-virtiofs,path=$(vfsd_sock "$name")" \
+      -device "vhost-user-fs-pci,queue-size=1024,chardev=char-virtiofs,tag=$tag"
+  fi
+
+  if [ "$disp" = "spice" ]; then
+    printf '%s\n' -spice "port=$spice,disable-ticketing=on" \
+      -device virtio-serial-pci \
+      -chardev spicevmc,id=vdagent,name=vdagent \
+      -device virtserialport,chardev=vdagent,name=com.redhat.spice.0 \
+      -display none -vga qxl
+  else
+    printf '%s\n' -vnc ":$vnc" -display none -vga virtio
+  fi
+}
+
+cmd_start() {
+  local name="${1:-}" offline=0
+  [ -n "$name" ] || die "usage: qemu-manager-vm start <name> [--offline]"
+  [ "${2:-}" = "--offline" ] && offline=1
+  [ -f "$(vm_conf "$name")" ] || die "no such VM: $name (missing $(vm_conf "$name"))"
+  command -v "$QEMU_BIN" >/dev/null 2>&1 || die "QEMU binary not found: $QEMU_BIN"
+
+  local pidfile; pidfile="$(vm_pid "$name")"
+  if p="$(read_pid "$pidfile")" && pid_alive "$p"; then
+    die "VM '$name' is already running (pid $p)"
+  fi
+
+  if have_systemd && ! lingering_on; then
+    echo "qemu-manager-vm: WARNING user lingering is off; the VM will be killed when your session ends." >&2
+    echo "                 enable persistence with: loginctl enable-linger $(id -un)" >&2
+  fi
+
+  local share; share="$(conf_get "$name" SHARE_PATH)"
+  [ -n "$share" ] && start_virtiofsd "$name" "$share"
+
+  mapfile -t qargs < <(build_args "$name" "$offline")
+  launch_detached "$(unit_name qemu "$name")" "$pidfile" "$(vm_log "$name")" \
+    -- "$QEMU_BIN" "${qargs[@]}"
+  echo "started '$name' (pid $(read_pid "$pidfile")); display=$(conf_get "$name" VM_DISPLAY)"
+}
+
+cmd_stop() {
+  local name="${1:-}"
+  [ -n "$name" ] || die "usage: qemu-manager-vm stop <name>"
+  local pidfile; pidfile="$(vm_pid "$name")"
+  local p; p="$(read_pid "$pidfile" || true)"
+  if [ -z "$p" ] || ! pid_alive "$p"; then
+    rm -f "$pidfile"
+    echo "VM '$name' is not running"
+    return 0
+  fi
+  echo "stopping '$name' (pid $p)..."
+  kill -TERM "$p" 2>/dev/null || true
+  local tries=0
+  while [ "$tries" -lt 10 ] && pid_alive "$p"; do sleep 1; tries=$((tries + 1)); done
+  if pid_alive "$p"; then echo "force-killing..."; kill -KILL "$p" 2>/dev/null || true; fi
+  rm -f "$pidfile"
+  # tear down virtiofsd if present
+  local vp; vp="$(read_pid "$(vfsd_pid "$name")" || true)"
+  if [ -n "$vp" ] && pid_alive "$vp"; then kill -TERM "$vp" 2>/dev/null || true; fi
+  rm -f "$(vfsd_pid "$name")" "$(vfsd_sock "$name")"
+  echo "stopped."
+}
+
+open_viewer() { # name
+  local name="$1" disp
+  disp="$(conf_get "$name" VM_DISPLAY)"; disp="${disp:-$DEF_DISPLAY}"
+  if [ "$disp" = "spice" ]; then
+    local spice; spice="$(conf_get "$name" VM_SPICE_PORT)"; spice="${spice:-$DEF_SPICE_PORT}"
+    command -v "$SPICE_VIEWER" >/dev/null 2>&1 || die "SPICE viewer not found: $SPICE_VIEWER"
+    setsid "$SPICE_VIEWER" -h localhost -p "$spice" >/dev/null 2>&1 &
+    echo "opened SPICE viewer (localhost:$spice)"
+  else
+    local vnc port; vnc="$(conf_get "$name" VM_VNC_DISPLAY)"; vnc="${vnc:-$DEF_VNC_DISPLAY}"
+    port=$((5900 + vnc))
+    command -v "$VNC_VIEWER" >/dev/null 2>&1 || die "VNC viewer not found: $VNC_VIEWER"
+    setsid "$VNC_VIEWER" "localhost:$port" "${VNC_VIEWER_ARGS[@]}" >/dev/null 2>&1 &
+    echo "opened VNC viewer (localhost:$port)"
+  fi
+}
+
+cmd_view() {
+  local name="${1:-}"
+  [ -n "$name" ] || die "usage: qemu-manager-vm view <name>"
+  local p; p="$(read_pid "$(vm_pid "$name")" || true)"
+  { [ -n "$p" ] && pid_alive "$p"; } || die "VM '$name' is not running"
+  open_viewer "$name"
+}
+
+cmd_run() {
+  local name="${1:-}"
+  [ -n "$name" ] || die "usage: qemu-manager-vm run <name> [--offline]"
+  local p; p="$(read_pid "$(vm_pid "$name")" || true)"
+  if [ -z "$p" ] || ! pid_alive "$p"; then
+    cmd_start "$@"
+    sleep 1
+  else
+    echo "VM '$name' already running (pid $p)"
+  fi
+  open_viewer "$name"
+}
+
+cmd_status() {
+  local name="${1:-}"
+  [ -n "$name" ] || die "usage: qemu-manager-vm status <name>"
+  local p; p="$(read_pid "$(vm_pid "$name")" || true)"
+  if [ -n "$p" ] && pid_alive "$p"; then
+    echo "$name: running (pid $p)"
+  else
+    echo "$name: stopped"
+  fi
+}
+
+cmd_list() {
+  [ -d "$BASE_DIR" ] || { echo "(no VMs in $BASE_DIR)"; return 0; }
+  local d name
+  for d in "$BASE_DIR"/*/; do
+    [ -f "$d/vm.conf" ] || continue
+    name="$(basename "$d")"
+    cmd_status "$name"
+  done
+}
+
+cmd_print() {
+  local name="${1:-}" offline=0
+  [ -n "$name" ] || die "usage: qemu-manager-vm print <name> [--offline]"
+  [ "${2:-}" = "--offline" ] && offline=1
+  [ -f "$(vm_conf "$name")" ] || die "no such VM: $name"
+  local qargs; mapfile -t qargs < <(build_args "$name" "$offline")
+  printf '%q ' "$QEMU_BIN" "${qargs[@]}"; echo
+}
+
+main() {
+  local sub="${1:-}"; shift || true
+  case "$sub" in
+    start)  cmd_start  "$@" ;;
+    run)    cmd_run    "$@" ;;
+    view)   cmd_view   "$@" ;;
+    stop)   cmd_stop   "$@" ;;
+    status) cmd_status "$@" ;;
+    list)   cmd_list   "$@" ;;
+    print)  cmd_print  "$@" ;;
+    ""|-h|--help|help)
+      sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//' ;;
+    *) die "unknown command: $sub (try --help)" ;;
+  esac
+}
+
+main "$@"
