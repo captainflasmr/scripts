@@ -15,10 +15,21 @@ if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
     swaybg -i "$wallpaper_path" -m fill &
 fi
 
-# lets run pywal for colour scheme generation
+# lets run pywal for colour scheme generation.
+# -s skips blasting OSC colour sequences at open terminals, so nothing gets
+# recoloured live. Cache files (colours.json etc.) are still generated for the
+# templated consumers below.
 wal -c
-# wal -i ~/.last_wallpaper.jpg -q -n 2>&1 /dev/null
-wal -i ~/.last_wallpaper.jpg -q -n
+wal -i ~/.last_wallpaper.jpg -q -n -s
+
+# Give foot and kitty only a gentle tint of the pywal palette (mostly their own
+# base). Each reloads on SIGUSR1 to pick up the regenerated theme file.
+#   foot/theme.ini, kitty/theme.conf
+# alacritty is deliberately left out: it keeps a static Gruvbox theme and lets
+# the swayfx-blurred wallpaper seep through via its window opacity instead.
+python3 ~/bin/terminal_pywal_tint.py
+pkill -SIGUSR1 -x foot 2>/dev/null || true
+pkill -SIGUSR1 -x kitty 2>/dev/null || true
 
 # Load colors from pywal
 colors=$(cat ~/.cache/wal/colors.json)
