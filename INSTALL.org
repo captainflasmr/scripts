@@ -1,35 +1,50 @@
 * Linux-Install                                             :noexport:2023:
 
-Update and reboot
+Fresh-install a laptop from a single USB stick.
 
-** Install
+** TL;DR
 
-Navigate to top level of backup disk which contains Home/bin, run:
-
-#+begin_src bash
-~/bin/install.sh
-#+end_src
-
-** Samsung
-
-*** enable brightness with grub / kernel
-
-Modify the GRUB config file sudo nano /etc/default/grub in the GRUB_CMDLINE_LINUX_DEFAULT append "i915.enable_dpcd_backlight=3" then save the file
-
-Rebuild GRUB (on Arch):
+On a *working* machine, populate the stick:
 
 #+begin_src bash
-  sudo grub-mkconfig -o /boot/grub/grub.cfg
+~/bin/bootstrap/refresh-usb.sh /run/media/$USER/INSTALL
 #+end_src
 
-reboot and test with the key if it works
+On the *fresh* machine (Arch or Linux Mint), after the base OS install:
 
-** syncthing
+#+begin_src bash
+cd /run/media/$USER/INSTALL
+./install.sh
+#+end_src
+
+Full docs: see ~/bin/bootstrap/README.org
+
+** Legacy
+
+The old flow (~/bin/install.sh syncing from a backup disk, install-from-nas.sh
+mounting the NFS NAS, install-minimal-sway.sh for openSUSE) is superseded by
+~/bin/bootstrap. Those scripts are kept for reference only.
+
+** Machine-specific notes
+
+*** Samsung — brightness keys
+
+Handled by the opt-in prompt in install.sh (i915.enable_dpcd_backlight=3 added
+to GRUB). To do it manually: edit /etc/default/grub, append the param to
+GRUB_CMDLINE_LINUX_DEFAULT, then:
+
+#+begin_src bash
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+#+end_src
+
+reboot and test the brightness key.
+
+*** syncthing
 
 sync to ~/DCIM
 sync to ~/Snapseed
 
-** greeter
+*** greeter
 
 #+begin_src bash
 systemctl disable greetd
