@@ -1,0 +1,110 @@
+#+title: USB Bootstrap Installer
+#+author: James Dyer
+
+One inserted USB stick → a fully set-up Arch (main) or Linux Mint (fallback) laptop. Self-contained: at install time it needs nothing from the NAS or the network except the package mirrors.
+
+* The two commands
+
+| When                          | Run                                           |
+|-------------------------------+-----------------------------------------------|
+| On your *working* machine     | =~/bin/bootstrap/refresh-usb.sh <stick>=      |
+| On the *fresh* machine        | =<stick>/install.sh=                          |
+
+* Layout
+
+On the stick (after =refresh-usb.sh=):
+
+#+begin_example
+<stick>/
+├── install.sh            the one command you run on the new box
+├── refresh-usb.sh        re-populate the stick from a working box
+├── setup-ventoy.sh       partition a blank stick (Ventoy + ext4 payload)
+├── lib/                  common.sh, pkg.sh, steps.sh
+├── packages/             arch-pacman / arch-aur / mint-apt / flatpak / arch-remove
+├── home/                 curated dotfiles + bin + .config
+├── secrets.tar.gz.gpg    gpg-symmetric-encrypted .ssh/.gnupg/.authinfo
+└── data/                 DCIM/ source/ wallpaper/
+#+end_example
+
+* Single "everything" stick (Ventoy + payload)
+
+One stick does both jobs: it boots distro ISOs *and* carries the install payload.
+=setup-ventoy.sh= partitions a blank stick into three:
+
+#+begin_example
+sdX1   exFAT  "Ventoy"   ← drop distro .iso files here (shown in the boot menu)
+sdX2   VTOYEFI           ← Ventoy boot bits (leave alone)
+sdX3   ext4   "INSTALL"  ← the bootstrap payload (perms + symlinks preserved)
+#+end_example
+
+ext4 for the payload is deliberate: the home payload has symlinks and ~77
+executable scripts that exFAT would silently mangle.
+
+** Preparing a stick (first time)
+
+1. Identify the stick's device with =lsblk= (e.g. /dev/sdb). Be sure.
+2. Partition it (WIPES the device; reserves 100 GiB for the ext4 payload by default):
+   #+begin_src bash
+   ~/bin/bootstrap/setup-ventoy.sh /dev/sdX            # or --reserve-gib 80
+   #+end_src
+   It refuses non-USB/removable disks and makes you type the device name to confirm.
+   Add =--check= to probe the flash with =f3probe= (needs the =f3= package) — verifies
+   it's genuine and not pathologically slow, since counterfeit/fake-capacity sticks and
+   dying flash silently corrupt backups. The probe is opt-in and aborts on a bad verdict;
+   worth doing on any new or untrusted stick.
+3. Re-plug the stick; it mounts as two volumes: =Ventoy= and =INSTALL=.
+4. Copy distro ISOs onto the =Ventoy= volume.
+5. Populate the payload (asks for a gpg passphrase to encrypt secrets — remember it):
+   #+begin_src bash
+   ~/bin/bootstrap/refresh-usb.sh /run/media/$USER/INSTALL
+   #+end_src
+   refresh-usb flags:
+   - =--no-source=  drop the big git-reconstructable =source= dir (keeps DCIM/wallpaper)
+   - =--no-data=    drop all bulk data (DCIM/source/wallpaper)
+   - =--no-secrets= don't bundle the encrypted keys
+6. Re-running =refresh-usb.sh= later is incremental (rsync), so keeping it current is cheap.
+
+** Small sticks (≤64 GB)
+
+Lower the ext4 reserve so it fits, and trim the payload to match:
+#+begin_src bash
+~/bin/bootstrap/setup-ventoy.sh /dev/sdX --reserve-gib 40   # ~17 GiB left for ISOs on a 57 GiB stick
+# full payload (~33 GiB) fits in 40 GiB; or trim source and use less:
+~/bin/bootstrap/setup-ventoy.sh /dev/sdX --reserve-gib 18
+~/bin/bootstrap/refresh-usb.sh /run/media/$USER/INSTALL --no-source
+#+end_src
+Add =--check= to setup-ventoy.sh to run the f3probe flash verification (opt-in).
+
+* Installing on a fresh machine
+
+1. Boot the stick, pick the distro ISO from the Ventoy menu, and do the base
+   install (Arch or Mint) the normal way. Boot into a user shell.
+2. Re-plug the same stick, find the INSTALL mount point, and run:
+   #+begin_src bash
+   cd /run/media/$USER/INSTALL
+   ./install.sh
+   #+end_src
+3. Enter the gpg passphrase when prompted (for secrets).
+
+Order of operations: detect distro → system update → install packages (pacman+AUR / apt) → flatpaks → restore home → restore secrets → restore data → default shell (fish) → user groups → optional NAS-mount cron → optional Samsung backlight GRUB fix.
+
+** Useful flags
+| =--yes=           | assume yes to prompts               |
+| =--packages-only= | just install software               |
+| =--no-data=       | skip the ~32 GB bulk-data restore   |
+| =--no-secrets=    | skip key restore                    |
+| =--remove=        | also purge =arch-remove.txt= (Arch) |
+
+* Editing what gets installed / copied
+
+- *Packages*: edit =packages/*.txt= — one package per line, =#= comments a line out.
+- *Dotfiles copied to the stick*: =HOME_INCLUDE= near the top of =refresh-usb.sh=.
+- *Secrets bundled*: =SECRET_INCLUDE= in =refresh-usb.sh=.
+- *Bulk data dirs*: =DATA_DIRS= in =refresh-usb.sh=.
+
+* Notes / caveats
+
+- The Mint list is *curated*, not auto-translated. Cinnamon/X11 means the whole Wayland stack is omitted; a few apps (vscode, zed, veracrypt, ollama) have no apt package and are noted as TODO in =mint-apt.txt=.
+- Package install failures are warnings, not fatal — the run continues and prints what failed so you can chase names afterward.
+- The NAS-mount cron and Samsung backlight fix are *opt-in* prompts; they only make sense on specific machines.
+- Legacy scripts (=install.sh=, =install-from-nas.sh=, =install-minimal-sway.sh=, …) in =~/bin= are superseded by this. Keep or delete them as you like.
