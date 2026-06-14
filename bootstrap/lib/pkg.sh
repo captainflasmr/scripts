@@ -46,7 +46,7 @@ _native_install_one() {
     case "$DISTRO" in
         arch)
             if pacman -Qi "$p" &>/dev/null; then info "skip (installed): $p"; return; fi
-            info "pacman: $p"; "${AUR_HELPER:-sudo pacman}" -S --needed --noconfirm "$p" \
+            info "pacman: $p"; sudo pacman -S --needed --noconfirm "$p" \
                 || warn "FAILED: $p" ;;
         mint)
             if dpkg -s "$p" &>/dev/null; then info "skip (installed): $p"; return; fi

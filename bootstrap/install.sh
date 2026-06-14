@@ -17,6 +17,7 @@
 #   --no-packages    skip all package installation
 #   --packages-only  only install packages, nothing else
 #   --remove         also remove the unwanted-defaults list (arch-remove.txt)
+#   --step <name>    run a single step function and exit (for testing)
 #   -h, --help       this help
 
 set -uo pipefail
@@ -30,20 +31,30 @@ source "$BOOTSTRAP_DIR/lib/pkg.sh"
 source "$BOOTSTRAP_DIR/lib/steps.sh"
 
 # --- args -----------------------------------------------------------------
-ASSUME_YES=0; DO_DATA=1; DO_SECRETS=1; DO_PACKAGES=1; PACKAGES_ONLY=0; DO_REMOVE=0
-for arg in "$@"; do
-    case "$arg" in
+ASSUME_YES=0; DO_DATA=1; DO_SECRETS=1; DO_PACKAGES=1; PACKAGES_ONLY=0; DO_REMOVE=0; RUN_STEP=
+while [[ $# -gt 0 ]]; do
+    case "$1" in
         --yes|-y)       ASSUME_YES=1 ;;
         --no-data)      DO_DATA=0 ;;
         --no-secrets)   DO_SECRETS=0 ;;
         --no-packages)  DO_PACKAGES=0 ;;
         --packages-only) PACKAGES_ONLY=1 ;;
         --remove)       DO_REMOVE=1 ;;
+        --step)         [[ -n ${2:-} ]] || die "--step requires a function name"; RUN_STEP=$2; shift ;;
         -h|--help)      sed -n '2,/^set /{/^set /d;p}' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-        *)              die "unknown flag: $arg (try --help)" ;;
+        *)              die "unknown flag: $1 (try --help)" ;;
     esac
+    shift
 done
 export ASSUME_YES
+
+if [[ -n $RUN_STEP ]]; then
+    detect_distro
+    sudo_keepalive
+    declare -f "$RUN_STEP" &>/dev/null || die "unknown step: $RUN_STEP"
+    "$RUN_STEP"
+    exit $?
+fi
 
 # --- preflight ------------------------------------------------------------
 [[ $EUID -eq 0 ]] && die "Run as your normal user, not root (the script uses sudo where needed)."

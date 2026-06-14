@@ -79,6 +79,7 @@ mb2md
 meld
 mp3info
 mpv
+mu
 ncdu
 nfs-utils
 ninja
@@ -115,6 +116,7 @@ recoll
 retroarch
 retroarch-assets-xmb
 ripgrep
+rofi
 rofimoji
 rust
 sccache

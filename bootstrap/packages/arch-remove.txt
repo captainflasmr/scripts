@@ -29,7 +29,6 @@ power-profiles-daemon
 python-pywlroots
 qt5ct
 qtcreator
-rofi
 ruby-fusuma
 subversion
 swig
