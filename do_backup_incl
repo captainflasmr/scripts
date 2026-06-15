@@ -25,6 +25,10 @@ publish
 scripts
 source
 wallpaper
+Pictures/digikam4.db
+Pictures/thumbnails-digikam.db
+Pictures/similarity.db
+Pictures/recognition.db
 .face.icon
 .authinfo
 .mbsyncpass-captainflasmr

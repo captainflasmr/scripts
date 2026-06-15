@@ -9,7 +9,7 @@
 #     <stick>/lib/  packages/       <- the bootstrap code + package lists
 #     <stick>/home/                 <- curated dotfiles + bin + config
 #     <stick>/secrets.tar.gz.gpg    <- gpg-symmetric-encrypted keys
-#     <stick>/data/{DCIM,source,wallpaper}
+#     <stick>/data/{DCIM,source,wallpaper,Pictures}
 #
 # Re-running rsyncs incrementally, so updating an existing stick is cheap.
 # Flags: --no-data, --no-secrets, --yes
@@ -124,6 +124,23 @@ if [[ $DO_DATA == 1 ]]; then
             warn "skip (missing): $d"
         fi
     done
+
+    # DigiKam databases — small files, but restoring them means digikam
+    # reads the existing catalog on first launch rather than re-scanning.
+    local db_files=( digikam4.db thumbnails-digikam.db similarity.db recognition.db )
+    local found_any=0
+    for f in "${db_files[@]}"; do [[ -f $HOME/Pictures/$f ]] && found_any=1; done
+    if [[ $found_any == 1 ]]; then
+        mkdir -p "$STICK/data/Pictures"
+        for f in "${db_files[@]}"; do
+            if [[ -f $HOME/Pictures/$f ]]; then
+                info "data/ <- Pictures/$f ($(du -sh "$HOME/Pictures/$f" 2>/dev/null | cut -f1))"
+                rsync -ltP "$HOME/Pictures/$f" "$STICK/data/Pictures/"
+            fi
+        done
+    else
+        warn "skip: no DigiKam databases found in ~/Pictures/"
+    fi
 fi
 
 sync
