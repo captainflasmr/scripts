@@ -95,4 +95,5 @@ if confirm "Set up reboot NAS auto-mount cron (only useful on your LAN)?"; then
     step_cron_nasmount
 fi
 step_quirk_samsung_backlight
+step_mu_init
 step_done

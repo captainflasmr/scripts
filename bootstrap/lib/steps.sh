@@ -13,6 +13,7 @@ step_restore_home() {
         --exclude '.local/share/Trash/' \
         --exclude '.gnupg/' --exclude '.ssh/' \
         --exclude '.authinfo' --exclude '.authinfo.gpg' \
+        --exclude '.mbsyncpass*' \
         "$SRC_DIR/home/" "$HOME/"
 }
 
@@ -143,6 +144,29 @@ step_quirk_samsung_backlight() {
     fi
 }
 
+# --- mu / mu4e email index ------------------------------------------------
+# Reads personal addresses from .mbsyncrc so nothing is hardcoded here.
+step_mu_init() {
+    section "mu / mu4e email index"
+    command -v mu &>/dev/null || { warn "mu not installed, skipping"; return 0; }
+    local maildir="$HOME/Maildir"
+    [[ -d $maildir ]] || { warn "$maildir not found — run mbsync first, then re-run this step"; return 0; }
+    [[ -f $HOME/.mbsyncrc ]] || { warn "no .mbsyncrc found — restore secrets first"; return 0; }
+    local -a addrs=()
+    while IFS= read -r addr; do
+        addrs+=("--my-address=$addr")
+    done < <(grep -i "^User " "$HOME/.mbsyncrc" | awk '{print $2}')
+    [[ ${#addrs[@]} -eq 0 ]] && { warn "no User entries found in .mbsyncrc, skipping"; return 0; }
+    if mu info &>/dev/null; then
+        info "mu database already initialised"
+    else
+        info "initialising mu database (maildir=$maildir)"
+        mu init --maildir="$maildir" "${addrs[@]}"
+    fi
+    info "indexing mail"
+    mu index
+}
+
 # --- final notes ----------------------------------------------------------
 step_done() {
     section "Done"
@@ -152,5 +176,7 @@ Install finished. Worth checking / doing manually:
   • ~/.emacs.d and ~/.config are restored as git repos — 'git status' in each to confirm.
   • Verify ssh: ssh -T git@github.com
   • syncthing folders (~/DCIM, ~/Snapseed).
+  • Email: ensure .mbsyncpass-{james,jimbob,captainflasmr} are in the secrets archive.
+  • Run 'mbsync -a' to fetch new mail, then 'mu index' to update the search index.
 EOF
 }

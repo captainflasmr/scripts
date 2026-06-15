@@ -81,6 +81,7 @@ meld
 mp3info
 mpv
 mu
+isync
 ncdu
 nfs-utils
 ninja
