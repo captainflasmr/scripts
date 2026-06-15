@@ -177,7 +177,12 @@ preflight_stick_check
 # --- 1. Ventoy (interactive y/n from Ventoy2Disk.sh itself) ---------------
 ensure_exfat_shim
 section "Installing Ventoy (reserving ${RESERVE_GIB} GiB)"
-sudo bash "$VENTOY_SH" -i -r "$reserve_mb" "$DEV" || die "Ventoy install failed"
+ventoy_dir=$(dirname "$(readlink -f "$VENTOY_SH")")
+# Must cd into the ventoy dir first: Ventoy2Disk.sh builds its tool PATH from
+# $OLDDIR=$(pwd) before it cds internally, so calling it via absolute path from
+# another directory leaves vtoycli off PATH.
+sudo bash -c "cd '$ventoy_dir' && bash '$(basename "$VENTOY_SH")' -I -r '$reserve_mb' '$DEV'" \
+    || die "Ventoy install failed"
 
 # --- 2. ext4 partition in the reserved tail -------------------------------
 section "Creating ext4 INSTALL partition"
@@ -191,6 +196,11 @@ read -r tail_start tail_end < <(
                  if (sz+0 > best) { best=sz+0; bs=s; be=e } }
         END { print bs, be }')
 [[ -n $tail_start && -n $tail_end ]] || die "could not find reserved free space on $DEV"
+# parted print free rounds down when displaying MiB, so the reported start (e.g.
+# 14911MiB) can sit inside the last sector of the preceding partition rather than
+# at the true free boundary. Always step up by 1 MiB to guarantee we land in the
+# free region on an aligned boundary. 1 MiB waste on a 100 GiB partition is fine.
+tail_start=$(awk -v s="$tail_start" 'BEGIN{print int(s)+1}')
 info "reserved free region: ${tail_start}MiB .. ${tail_end}MiB"
 
 # snapshot partitions, create the new one, then detect which one appeared

@@ -65,6 +65,7 @@ kdenlive
 kitty
 kdeconnect
 keepassxc
+ksshaskpass
 krita
 krita-plugin-gmic
 less

@@ -114,16 +114,32 @@ step_disable_display_manager() {
 # Samsung laptops: brightness keys need a kernel param. Opt-in, since it
 # rewrites GRUB config.
 step_quirk_samsung_backlight() {
-    confirm "Apply Samsung i915 backlight GRUB fix?" || { info "skipped"; return 0; }
-    local grub=/etc/default/grub param="i915.enable_dpcd_backlight=3"
+    confirm "Apply Samsung Galaxy Book i915 backlight fix?" || { info "skipped"; return 0; }
+    local grub=/etc/default/grub
     [[ -f $grub ]] || { warn "$grub not found"; return 0; }
-    if grep -q "$param" "$grub"; then
-        info "backlight param already present"
+    local changed=0
+    for param in "acpi_backlight=native" "i915.enable_dpcd_backlight=3"; do
+        if grep -q "$param" "$grub"; then
+            info "already present: $param"
+        else
+            sudo sed -i -E "s/(GRUB_CMDLINE_LINUX_DEFAULT=\"[^\"]*)/\1 $param/" "$grub"
+            info "added: $param"
+            changed=1
+        fi
+    done
+    local udev=/etc/udev/rules.d/90-backlight.rules
+    if [[ ! -f $udev ]]; then
+        echo 'ACTION=="add", SUBSYSTEM=="backlight", RUN+="/bin/chgrp video /sys/class/backlight/%k/brightness", RUN+="/bin/chmod g+w /sys/class/backlight/%k/brightness"' \
+            | sudo tee "$udev" >/dev/null
+        info "udev backlight rule created"
+        changed=1
     else
-        sudo sed -i -E "s/(GRUB_CMDLINE_LINUX_DEFAULT=\")/\1$param /" "$grub"
+        info "udev backlight rule already present"
+    fi
+    if [[ $changed == 1 ]]; then
         if [[ -f /boot/grub/grub.cfg ]]; then sudo grub-mkconfig -o /boot/grub/grub.cfg
         elif command -v update-grub &>/dev/null; then sudo update-grub; fi
-        info "backlight param added (reboot to take effect)"
+        info "GRUB rebuilt — reboot to apply brightness fix"
     fi
 }
 
