@@ -3,12 +3,18 @@
 
 One inserted USB stick → a fully set-up Arch (main) or Linux Mint (fallback) laptop. Self-contained: at install time it needs nothing from the NAS or the network except the package mirrors.
 
-* The two commands
+* The commands
 
-| When                          | Run                                           |
-|-------------------------------+-----------------------------------------------|
-| On your *working* machine     | =~/bin/bootstrap/refresh-usb.sh <stick>=      |
-| On the *fresh* machine        | =<stick>/install.sh=                          |
+| When                            | Run                                           |
+|---------------------------------+-----------------------------------------------|
+| On your *working* machine       | =~/bin/bootstrap/refresh-usb.sh <stick>=      |
+| On the *fresh* machine          | =<stick>/install.sh=                          |
+| On an *already-set-up* machine  | =~/bin/bootstrap/sync-from-nas.sh=            |
+
+The first two are the install path: USB stick → fresh laptop (a point-in-time
+snapshot). =sync-from-nas.sh= is the *refresh* path: pull the current data set
+straight off the NAS onto a box that's already installed — e.g. a spare laptop
+you've hopped onto and want brought up to date.
 
 * Layout
 
@@ -18,8 +24,9 @@ On the stick (after =refresh-usb.sh=):
 <stick>/
 ├── install.sh            the one command you run on the new box
 ├── refresh-usb.sh        re-populate the stick from a working box
+├── sync-from-nas.sh      pull the live data set down from the NAS
 ├── setup-ventoy.sh       partition a blank stick (Ventoy + ext4 payload)
-├── lib/                  common.sh, pkg.sh, steps.sh
+├── lib/                  common.sh, pkg.sh, steps.sh, payload.sh
 ├── packages/             arch-pacman / arch-aur / mint-apt / flatpak / arch-remove
 ├── home/                 curated dotfiles + bin + .config
 ├── secrets.tar.gz.gpg    gpg-symmetric-encrypted .ssh/.gnupg/.authinfo
@@ -95,12 +102,36 @@ Order of operations: detect distro → system update → install packages (pacma
 | =--no-secrets=    | skip key restore                    |
 | =--remove=        | also purge =arch-remove.txt= (Arch) |
 
+* Refreshing data from the NAS
+
+Once a machine is installed, =sync-from-nas.sh= keeps it current by pulling the
+live data straight off the NAS (which mirrors =$HOME= under =/volume1/Drive/Home=).
+This is what you run after hopping onto a spare laptop that was set up from the
+stick weeks ago — the stick is a snapshot; the NAS is live.
+
+#+begin_src bash
+~/bin/bootstrap/sync-from-nas.sh             # pull bulk data (DCIM/source/wallpaper/Maildir)
+~/bin/bootstrap/sync-from-nas.sh --home      # also refresh dotfiles + bin + .config
+~/bin/bootstrap/sync-from-nas.sh --dry-run   # show what would change, write nothing
+#+end_src
+
+It auto-mounts the NAS if it isn't already (same NFS targets as
+=~/bin/startup_root.sh=) and *refuses to run* unless the =Home/= mirror is
+actually visible — so a missing or half-up mount aborts instead of letting
+rsync sync from an empty path over your good local files. It pulls *additively*
+by default (never deletes local-only files); pass =--mirror= for an exact
+mirror. Secrets (=.ssh= / =.gnupg= / =.authinfo=) are never touched — those only
+ever travel in the gpg archive on the stick.
+
+flags: =--home= (dotfiles too) · =--no-data= · =--mirror= (delete local-only) ·
+=--dry-run= · =--yes=
+
 * Editing what gets installed / copied
 
 - *Packages*: edit =packages/*.txt= — one package per line, =#= comments a line out.
-- *Dotfiles copied to the stick*: =HOME_INCLUDE= near the top of =refresh-usb.sh=.
-- *Secrets bundled*: =SECRET_INCLUDE= in =refresh-usb.sh=.
-- *Bulk data dirs*: =DATA_DIRS= in =refresh-usb.sh=.
+- *Dotfiles, secrets, bulk-data dirs*: the =HOME_INCLUDE= / =SECRET_INCLUDE= /
+  =DATA_DIRS= lists in =lib/payload.sh= — one source of truth shared by both
+  =refresh-usb.sh= (push to stick) and =sync-from-nas.sh= (pull from NAS).
 
 * Notes / caveats
 

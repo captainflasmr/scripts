@@ -17,19 +17,9 @@
 set -uo pipefail
 BOOTSTRAP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$BOOTSTRAP_DIR/lib/common.sh"
-
-# --- what to put on the stick (tweak here) --------------------------------
-# Curated dotfiles/dirs copied into <stick>/home/ (relative to $HOME).
-HOME_INCLUDE=( .config bin scripts .emacs.d .thunderbird
-               .profile .bashrc .bash_profile .bash_logout .gitconfig .ignore )
-# Secrets bundled into the encrypted archive (relative to $HOME).
-SECRET_INCLUDE=( .ssh .gnupg .authinfo .authinfo.gpg )
-# Bulk data dirs copied into <stick>/data/ (relative to $HOME).
-DATA_DIRS=( DCIM source wallpaper Maildir )
-# Excluded everywhere in the home payload (caches/junk only — .git is KEPT so
-# .config and bin stay working git repos on the restored machine).
-HOME_EXCLUDES=( --exclude '.cache/' --exclude '*/eln-cache/'
-                --exclude '.local/share/Trash/' --exclude '*.elc' )
+# HOME_INCLUDE / SECRET_INCLUDE / DATA_DIRS / HOME_EXCLUDES live here, shared
+# with sync-from-nas.sh so push (stick) and pull (NAS) agree on the data set.
+source "$BOOTSTRAP_DIR/lib/payload.sh"
 
 # --- args -----------------------------------------------------------------
 DO_DATA=1; DO_SECRETS=1; NO_SOURCE=0; ASSUME_YES=0; STICK=""
