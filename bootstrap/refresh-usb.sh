@@ -127,8 +127,8 @@ if [[ $DO_DATA == 1 ]]; then
 
     # DigiKam databases — small files, but restoring them means digikam
     # reads the existing catalog on first launch rather than re-scanning.
-    local db_files=( digikam4.db thumbnails-digikam.db similarity.db recognition.db )
-    local found_any=0
+    db_files=( digikam4.db thumbnails-digikam.db similarity.db recognition.db )
+    found_any=0
     for f in "${db_files[@]}"; do [[ -f $HOME/Pictures/$f ]] && found_any=1; done
     if [[ $found_any == 1 ]]; then
         mkdir -p "$STICK/data/Pictures"
