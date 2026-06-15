@@ -3,131 +3,91 @@
 
 * Introduction
 
-This repository contains a comprehensive collection of utility scripts and tools for various purposes including audio and video processing, image manipulation, system management, and more.
+This repository contains a collection of utility scripts and tools for system management, media processing, desktop environment control, backups, and web publishing.
 
 Below is a brief description of each script and its functionality.
 
-** Audio Processing Scripts
+** Shared Library
 
-- *AudioConvert*: Converts audio files between different formats.
-- *AudioInfo*: Retrieves and displays detailed metadata and information about an audio file.
-- *AudioNormalise*: Normalizes the volume of an audio file.
-- *AudioTrimSilence*: Trims unnecessary silence from the beginning and end of an audio file.
-- *OtherTagDate*: Modifies or tags audio files with specific dates and metadata.
+- *Common.sh*: Shared helper library sourced by other scripts. Parses file paths into components (extension, basename, directory, tag-stripped name, timestamp) used by tagging and conversion scripts.
 
-** Video Processing Scripts
+** Media & Tagging Scripts
 
-- *VideoConcat*: Concatenates multiple video files into one.
-- *VideoConvert*: Converts videos between different formats.
-- *VideoConvertToGif*: Converts a video file into a GIF.
-- *VideoCut*: Trims a video file by cutting it to a specific length.
-- *VideoDouble*: Doubles the speed of a video.
-- *VideoExtractAudio*: Extracts the audio track from a video file.
-- *VideoExtractFrames*: Extracts individual frames from a video file.
-- *VideoFilter*: Applies filters to a video (e.g., grayscale).
-- *VideoFromFrames*: Converts a series of image frames into a video.
-- *VideoInfo*: Displays metadata and information about a video file.
-- *VideoRemoveAudio*: Removes the audio track from a video.
-- *VideoRemoveFlips*: Removes accidental rotation or flipping from a video.
-- *VideoReplaceAudio*: Replaces the audio track of a video.
-- *VideoReplaceVideoAudio*: Replaces both the video and audio tracks.
-- *VideoRescale*: Rescales or changes the resolution of a video.
-- *VideoReverse*: Reverses the playback of a video.
-- *VideoRotate*: Rotates a video by a specified angle.
-- *VideoRotateLeft*: Rotates a video 90 degrees to the left.
-- *VideoRotateRight*: Rotates a video 90 degrees to the right.
-- *VideoShrink*: Reduces the file size of a video.
-- *VideoSlowDown*: Slows down the playback speed of a video.
-- *VideoSpeedUp*: Speeds up the playback of a video.
-- *VideoZoom*: Applies a zoom effect to a video.
-
-** Image Processing Scripts
-
-- *Picture2pdf*: Converts images to a PDF file.
-- *PictureAutoColour*: Automatically adjusts the colors and contrast of an image.
-- *PictureConvert*: Converts image files between different formats.
-- *PictureCorrect*: Corrects brightness, contrast, and other properties of an image.
-- *PictureCrop*: Crops an image to a specific shape or size.
-- *PictureCrush*: Optimizes and compresses images to reduce file size.
-- *PictureEmail*: Prepares and resizes images for email attachments.
-- *PictureFrompdf*: Extracts images from a PDF file.
-- *PictureGetText*: Performs OCR (optical character recognition) on an image to extract text.
-- *PictureInfo*: Shows metadata and detailed information about an image.
-- *PictureMontage*: Creates a montage or collage from multiple images.
-- *PictureOrganise*: Renames or reorganizes a collection of images.
-- *PictureOrientation*: Adjusts the orientation of images based on metadata.
-- *PictureRotateFlip*: Rotates or flips an image.
-- *PictureRotateLeft*: Rotates an image 90 degrees to the left.
-- *PictureRotateRight*: Rotates an image 90 degrees to the right.
-- *PictureScale*: Resizes an image based on given dimensions or scale factor.
-- *PictureTag*: Tags an image with relevant metadata.
-- *PictureTagRename*: Renames image files based on their metadata tags.
-- *PictureUpdateFromCreateDate*: Updates image metadata from its creation date.
-- *PictureUpdateToCreateDate*: Updates the image's creation date from the metadata.
-- *PictureUpscale*: Increases the resolution of an image without significant quality loss.
-
-** Miscellaneous Multimedia Scripts
-
-- *ConvertNoSpace*: Converts filenames by removing or replacing spaces.
-- *StegHide*: Hides or extracts information from media files using steganography.
-- **_tag_image_in.sh**: Adds tags to an image.
-- *tag_image_out.sh*: Removes tags from an image.
+- *_tag_image_in.sh*: Adds tags to an image using the embedded metadata naming convention.
+- *tag_image_out.sh*: Removes tags from an image filename and metadata.
 - *tag_info.sh*: Displays metadata tags of media files.
-- *tag_remove_meta.sh*: Removes metadata from media files.
+- *tag_remove_meta.sh*: Strips all metadata from media files.
 - *tag_time_correct.sh*: Corrects timestamp metadata in images or videos.
 - *tag_video_out.sh*: Removes tags from a video file.
+- *tagged_thumbnail_update.sh*: Regenerates missing thumbnail images for folder galleries; each folder should have a matching =.jpg= thumbnail.
+- *tagged_validate_dir*: Validates that every subdirectory under the tagged content tree contains a required =index.md= file.
+- *images.sh*: Processes a batch of image files.
+- *images_output_cat.sh*: Outputs concatenated image results as files.
+- *videos.sh*: Processes a batch of video files.
+- *krita_create_videos.sh*: Creates video files from Krita animation projects.
+- *photo-layout.sh*: Flexible photo print layout generator; arranges images at specified sizes onto a page for printing.
+- *watermark.sh*: Resizes images and applies a watermark overlay.
+- *update_all.sh*: Automated organisation and tagging of images and videos.
+- *WhatsAppConvert*: Converts WhatsApp export date/time formats using the Common.sh naming convention.
+- *ConvertNoSpace*: Renames files by replacing spaces in filenames.
+- *find-duplicates.sh*: Finds duplicate files by comparing checksums.
 
-** System and Utility Scripts
+** System & Utility Scripts
 
-- *battery-monitor.sh*: Monitors the system's battery status and sends notifications.
-- *cpu-speed.sh*: Displays the current speed of the CPU.
-- *desktop_actions*: A set of desktop shortcut configurations for common multimedia tasks.
-- *do_backup*: Backs up specific files or directories.
-- *download_video.sh*: Downloads videos from web sources.
-- *install.sh*: Installs essential scripts or packages.
-- *install_apps.sh*: Installs a list of applications defined in =install_apps.txt=.
-- *keyboard-reset.sh*: Resets the keyboard layout or keymap settings.
-- *keymap-load.sh*: Loads a predefined keymap.
+- *battery-monitor.sh*: Monitors the system battery status and sends desktop notifications.
+- *cpu-speed.sh*: Displays the current CPU frequency.
 - *led-monitor.sh*: Monitors and controls LED devices on the system.
-- *mysync*: A personal synchronization script for syncing files.
-- *screen-record.sh*: Starts recording the screen.
-- *toggle_waybar.sh*: Toggles the visibility of the Waybar system monitor.
-- *sway-print-tree.sh*: Prints the tree structure of the Sway window manager layout.
-- *wallpaper_change.sh*: Changes the desktop wallpaper.
+- *disk-cleanup*: Interactive disk space cleanup for Arch Linux with btrfs/snapper support.
+- *disk-initial-cleanup*: One-time setup script for disk space management (run as root).
+- *disk-usage-report*: Displays a comprehensive disk usage breakdown.
+- *nas-bypass*: Adds an explicit routing rule to keep NAS-subnet traffic off the Surfshark VPN tunnel, preventing NFS mount freezes.
+- *startup.sh*: Runs programs and applies settings on desktop session startup.
+- *startup_numpad.sh*: Starts the kmonad numpad keyboard configuration.
+- *startup_root.sh*: Root-level startup script; handles NAS mounting and related setup.
+- *off*: Quickly powers off or suspends the system.
+- *upall.sh*: System update wrapper that calls the appropriate package manager (garuda-update or pacman).
+- *mysync*: Personal file synchronisation script.
+- *tidy_up_dir*: Cleans up and reorganises a directory.
+- *download_video.sh*: Downloads videos from web sources via yt-dlp.
 - *webpage_crawl.sh*: Crawls a webpage to download resources or content.
 
 ** Backup Scripts
 
+- *do_backup*: Backs up specific files or directories via rsync.
 - *do_backup_excl*: Backs up files, excluding specified directories.
 - *do_backup_incl*: Backs up specific files or directories based on inclusion rules.
 
-** Installation Scripts
+** Screenshot & Screen Recording
 
-- *install_remote.sh*: Installs packages or scripts from a remote source.
-- *install_latest.sh*: Installs the latest versions of preset applications.
+- *screenshot.sh*: Takes a screenshot (auto-detects X11 or Wayland).
+- *screenshot_wayland.sh*: Wayland screenshot using slurp for region selection and grim for capture.
+- *screenshot_wayland_text.sh*: Takes a Wayland screenshot, runs OCR via tesseract, and copies the recognised text to the clipboard.
+- *screen-record.sh*: Starts a screen recording session.
+- *screen-record-check-status.sh*: Reports whether a screen recording is currently in progress.
+- *top-and-tail.sh*: Trims a specified number of seconds from the start and end of a video file.
 
-** Miscellaneous Scripts
+** Desktop & Wayland / Sway Scripts
 
-- *off*: A utility to quickly power off or suspend the system.
-- *permissions-git.sh*: Fixes permissions issues for Git repositories.
-- *permissions-key.sh*: Adjusts permissions for private keys.
-- *screenshot.sh*: Takes a screenshot of the screen.
-- *startup.sh*: Configuration for programs or settings that run on startup.
-- *thumbnails-reset.sh*: Resets thumbnail caches for images.
+- *launch_waybar*: Starts or restarts Waybar, the Wayland system monitoring bar.
+- *toggle_waybar.sh*: Toggles Waybar visibility.
+- *switch_waybar.sh*: Switches between different Waybar configurations.
+- *toggle_rofi.sh*: Toggles the Rofi launcher; dismisses it if already open.
+- *toggle_wlr_keyboard.sh*: Toggles the wvkbd on-screen virtual keyboard (Wayland).
+- *toggle_x11_keyboard.sh*: Toggles the onboard on-screen virtual keyboard (X11).
+- *keymap-load.sh*: Loads a predefined keymap configuration.
+- *keymap-monitor.sh*: Monitors the current keymap state (e.g. sticky modifier status).
+- *keymap-toggle.sh*: Toggles between sway and locked-modifier keymap configurations.
+- *keyboard-reset.sh*: Resets the keyboard layout to defaults.
+- *wallpaper_change.sh*: Changes the desktop wallpaper.
+- *wallpaper_reject.sh*: Rejects the current wallpaper and restores the previous one.
+- *terminal_pywal_tint.py*: Blends the pywal colour palette with each terminal's base theme to apply a gentle tint rather than a full palette override.
+- *thumbnails-reset.sh*: Resets the thumbnail cache for images.
+- *sway-print-tree.sh*: Prints the tree structure of the Sway window manager layout.
 
-** Desktop Action Shortcuts (.desktop files)
+** QEMU & Virtualisation
 
-These =.desktop= files provide quick shortcuts for multimedia tasks such as converting audio, trimming silence, resizing images, etc., to integrate into desktop environments.
+- *qemu-manager-vm*: Standalone start/stop manager for QEMU VMs. Reads the same =~/VM/<name>/vm.conf= files as =qemu-manager.el= so VMs can be managed independently of Emacs.
 
-** Scripts for Creating Videos
+** Web Publishing
 
-- *krita_create_videos.sh*: Creates video files from Krita projects.
-- *images.sh*: Processes a batch of image files.
-- *images_cat.sh*: Concatenates image files.
-- *images_output_cat.sh*: Outputs concatenated image results as files.
-- *videos.sh*: Processes a batch of video files.
-
-** Desktop Specific Scripts
-
-- *launch_waybar*: Starts or restarts Waybar, a system monitoring bar for Wayland.
-- *switch_waybar.sh*: Toggles visibility between different Waybar configurations.
+- *web*: Website publishing script driven by =org-bootstrap-publish=. Handles building and deploying multiple sites with optional Cloudflare cache invalidation.
