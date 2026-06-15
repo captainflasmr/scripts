@@ -8,3 +8,5 @@
 This document contains the current bugs/improvements, this is just for me mainly but does include any Issues reported.
 
 * Bugs/Improvements
+
+** TODO github authorization and add github-cli
