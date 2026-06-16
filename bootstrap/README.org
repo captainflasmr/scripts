@@ -11,10 +11,7 @@ One inserted USB stick → a fully set-up Arch (main) or Linux Mint (fallback) l
 | On the *fresh* machine          | =<stick>/install.sh=                          |
 | On an *already-set-up* machine  | =~/bin/bootstrap/sync-from-nas.sh=            |
 
-The first two are the install path: USB stick → fresh laptop (a point-in-time
-snapshot). =sync-from-nas.sh= is the *refresh* path: pull the current data set
-straight off the NAS onto a box that's already installed — e.g. a spare laptop
-you've hopped onto and want brought up to date.
+The first two are the install path: USB stick → fresh laptop (a point-in-time snapshot). =sync-from-nas.sh= is the *refresh* path: pull the current data set straight off the NAS onto a box that's already installed — e.g. a spare laptop you've hopped onto and want brought up to date.
 
 * Layout
 
@@ -26,7 +23,8 @@ On the stick (after =refresh-usb.sh=):
 ├── refresh-usb.sh        re-populate the stick from a working box
 ├── sync-from-nas.sh      pull the live data set down from the NAS
 ├── setup-ventoy.sh       partition a blank stick (Ventoy + ext4 payload)
-├── lib/                  common.sh, pkg.sh, steps.sh, payload.sh
+├── lib/                  common.sh, pkg.sh, steps.sh, payload.sh,
+│                         home-include.txt, home-exclude.txt (the shared lists)
 ├── packages/             arch-pacman / arch-aur / mint-apt / flatpak / arch-remove
 ├── home/                 curated dotfiles + bin + .config
 ├── secrets.tar.gz.gpg    gpg-symmetric-encrypted .ssh/.gnupg/.authinfo
@@ -35,8 +33,7 @@ On the stick (after =refresh-usb.sh=):
 
 * Single "everything" stick (Ventoy + payload)
 
-One stick does both jobs: it boots distro ISOs *and* carries the install payload.
-=setup-ventoy.sh= partitions a blank stick into three:
+One stick does both jobs: it boots distro ISOs *and* carries the install payload.  =setup-ventoy.sh= partitions a blank stick into three:
 
 #+begin_example
 sdX1   exFAT  "Ventoy"   ← drop distro .iso files here (shown in the boot menu)
@@ -44,8 +41,7 @@ sdX2   VTOYEFI           ← Ventoy boot bits (leave alone)
 sdX3   ext4   "INSTALL"  ← the bootstrap payload (perms + symlinks preserved)
 #+end_example
 
-ext4 for the payload is deliberate: the home payload has symlinks and ~77
-executable scripts that exFAT would silently mangle.
+ext4 for the payload is deliberate: the home payload has symlinks and ~77 executable scripts that exFAT would silently mangle.
 
 ** Preparing a stick (first time)
 
@@ -54,11 +50,7 @@ executable scripts that exFAT would silently mangle.
    #+begin_src bash
    ~/bin/bootstrap/setup-ventoy.sh /dev/sdX            # or --reserve-gib 80
    #+end_src
-   It refuses non-USB/removable disks and makes you type the device name to confirm.
-   Add =--check= to probe the flash with =f3probe= (needs the =f3= package) — verifies
-   it's genuine and not pathologically slow, since counterfeit/fake-capacity sticks and
-   dying flash silently corrupt backups. The probe is opt-in and aborts on a bad verdict;
-   worth doing on any new or untrusted stick.
+   It refuses non-USB/removable disks and makes you type the device name to confirm.  Add =--check= to probe the flash with =f3probe= (needs the =f3= package) — verifies it's genuine and not pathologically slow, since counterfeit/fake-capacity sticks and dying flash silently corrupt backups. The probe is opt-in and aborts on a bad verdict; worth doing on any new or untrusted stick.
 3. Re-plug the stick; it mounts as two volumes: =Ventoy= and =INSTALL=.
 4. Copy distro ISOs onto the =Ventoy= volume.
 5. Populate the payload (asks for a gpg passphrase to encrypt secrets — remember it):
@@ -84,8 +76,7 @@ Add =--check= to setup-ventoy.sh to run the f3probe flash verification (opt-in).
 
 * Installing on a fresh machine
 
-1. Boot the stick, pick the distro ISO from the Ventoy menu, and do the base
-   install (Arch or Mint) the normal way. Boot into a user shell.
+1. Boot the stick, pick the distro ISO from the Ventoy menu, and do the base install (Arch or Mint) the normal way. Boot into a user shell.
 2. Re-plug the same stick, find the INSTALL mount point, and run:
    #+begin_src bash
    cd /run/media/$USER/INSTALL
@@ -104,34 +95,39 @@ Order of operations: detect distro → system update → install packages (pacma
 
 * Refreshing data from the NAS
 
-Once a machine is installed, =sync-from-nas.sh= keeps it current by pulling the
-live data straight off the NAS (which mirrors =$HOME= under =/volume1/Drive/Home=).
-This is what you run after hopping onto a spare laptop that was set up from the
-stick weeks ago — the stick is a snapshot; the NAS is live.
+Once a machine is installed, =sync-from-nas.sh= keeps it current by pulling the live data straight off the NAS (which mirrors =$HOME= under =/volume1/Drive/Home=).  This is what you run after hopping onto a spare laptop that was set up from the stick weeks ago — the stick is a snapshot; the NAS is live.
 
 #+begin_src bash
 ~/bin/bootstrap/sync-from-nas.sh             # pull bulk data (DCIM/source/wallpaper/Maildir)
 ~/bin/bootstrap/sync-from-nas.sh --home      # also refresh dotfiles + bin + .config
+~/bin/bootstrap/sync-from-nas.sh --full      # pull the ENTIRE home that do_backup pushed
 ~/bin/bootstrap/sync-from-nas.sh --dry-run   # show what would change, write nothing
 #+end_src
 
-It auto-mounts the NAS if it isn't already (same NFS targets as
-=~/bin/startup_root.sh=) and *refuses to run* unless the =Home/= mirror is
-actually visible — so a missing or half-up mount aborts instead of letting
-rsync sync from an empty path over your good local files. It pulls *additively*
-by default (never deletes local-only files); pass =--mirror= for an exact
-mirror. Secrets (=.ssh= / =.gnupg= / =.authinfo=) are never touched — those only
-ever travel in the gpg archive on the stick.
+It auto-mounts the NAS if it isn't already (same NFS targets as =~/bin/startup_root.sh=) and *refuses to run* unless the =Home/= mirror is actually visible — so a missing or half-up mount aborts instead of letting rsync sync from an empty path over your good local files. It pulls *additively* by default (never deletes local-only files); pass =--mirror= for an exact mirror.
 
-flags: =--home= (dotfiles too) · =--no-data= · =--mirror= (delete local-only) ·
-=--dry-run= · =--yes=
+=--full= is the exact pull-counterpart of =do_backup=: both use the same shared lists (see below), so whatever =do_backup= mirrors *up* to the NAS, =--full= brings *down* — a true round-trip, secrets included (their perms are re-tightened after). The default/curated mode never touches secrets.
+
+flags: =--full= (whole do_backup home) · =--home= (dotfiles too) · =--no-data= · =--mirror= (delete local-only) · =--dry-run= · =--yes=
+
+* The single source of truth for "my data"
+
+All three directions read the same definitions in =lib/=, so nothing drifts:
+
+| File                   | Format             | Who uses it                                              |
+|------------------------+--------------------+----------------------------------------------------------|
+| =lib/home-include.txt= | rsync files-from   | =do_backup= (push), =sync-from-nas --full= (pull)        |
+| =lib/home-exclude.txt= | rsync exclude-from | all three (push / pull / stick)                          |
+| =lib/payload.sh=       | bash               | the hub: reads the two files, + the curated stick subset |
+
+- =home-include.txt= is the *full* home pushed to the NAS. Edit it to change what =do_backup= backs up; =sync-from-nas --full= mirrors the same set back.
+- =home-exclude.txt= is the shared junk/cache exclusion list.
+- The *curated USB-stick subset* (=HOME_INCLUDE= / =SECRET_INCLUDE= / =DATA_DIRS=) lives in =payload.sh=. It is deliberately a small subset — it omits the big, machine-specific dirs (=.local=, =Videos=, =Applications=…) that you want on the NAS but not on a portable install stick.
 
 * Editing what gets installed / copied
 
 - *Packages*: edit =packages/*.txt= — one package per line, =#= comments a line out.
-- *Dotfiles, secrets, bulk-data dirs*: the =HOME_INCLUDE= / =SECRET_INCLUDE= /
-  =DATA_DIRS= lists in =lib/payload.sh= — one source of truth shared by both
-  =refresh-usb.sh= (push to stick) and =sync-from-nas.sh= (pull from NAS).
+- *What gets backed up / restored*: see "single source of truth" above.
 
 * Notes / caveats
 

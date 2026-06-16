@@ -8,16 +8,24 @@
 #
 #     ~/bin/bootstrap/sync-from-nas.sh            # pull bulk data (DCIM/source/…)
 #     ~/bin/bootstrap/sync-from-nas.sh --home     # also refresh dotfiles/.config
+#     ~/bin/bootstrap/sync-from-nas.sh --full     # pull the ENTIRE home do_backup pushed
 #     ~/bin/bootstrap/sync-from-nas.sh --dry-run  # show what would change, do nothing
+#
+# --full is the exact pull-counterpart of do_backup: it uses the same shared
+# lists (lib/home-include.txt + lib/home-exclude.txt, see lib/payload.sh) so
+# whatever do_backup mirrors UP to the NAS, this brings back DOWN — a true
+# round-trip. The default (no --full) pulls only the curated bulk-data subset.
 #
 # Reliability: it refuses to run unless the NAS is actually mounted and the
 # Home/ mirror is visible, so a missing/half-up mount aborts the run rather than
 # letting rsync sync from an empty path over your good local files. It pulls
 # additively by default (never deletes local-only files) — pass --mirror for an
-# exact mirror of the NAS. Secrets (.ssh/.gnupg/.authinfo) are never touched.
+# exact mirror of the NAS. In the default/curated mode secrets are never touched;
+# --full includes them (it is a whole-home mirror) and re-tightens their perms.
 #
 # Flags:
-#   --home       also pull curated dotfiles + bin + .config (HOME_INCLUDE)
+#   --full       pull the entire do_backup home set (home-include.txt), secrets too
+#   --home       also pull curated dotfiles + bin + .config (ignored with --full)
 #   --no-data    skip the bulk data dirs (use with --home for dotfiles only)
 #   --mirror     delete local-only files so the target exactly mirrors the NAS
 #   --dry-run    rsync -n: report changes without writing anything
@@ -36,9 +44,10 @@ REMOTE_PATH="/volume1/Drive"
 TARGET_IPS=("192.168.0.10" "192.168.0.11" "192.168.7.103")
 
 # --- args -----------------------------------------------------------------
-DO_DATA=1; DO_HOME=0; MIRROR=0; DRYRUN=0; ASSUME_YES=0
+DO_DATA=1; DO_HOME=0; FULL=0; MIRROR=0; DRYRUN=0; ASSUME_YES=0
 for a in "$@"; do
     case "$a" in
+        --full)     FULL=1 ;;
         --home)     DO_HOME=1 ;;
         --no-data)  DO_DATA=0 ;;
         --mirror)   MIRROR=1 ;;
@@ -49,7 +58,7 @@ for a in "$@"; do
     esac
 done
 export ASSUME_YES
-[[ $DO_DATA == 0 && $DO_HOME == 0 ]] && die "nothing to do: --no-data without --home"
+[[ $FULL == 0 && $DO_DATA == 0 && $DO_HOME == 0 ]] && die "nothing to do: --no-data without --home"
 
 require_cmd rsync "Install rsync first."
 
@@ -84,11 +93,36 @@ RSYNC=( rsync -rlptP --human-readable )
 (( MIRROR )) && RSYNC+=( --delete )
 (( DRYRUN )) && RSYNC+=( -n )
 
+if (( FULL )); then
+    SCOPE="FULL home (= do_backup set, incl. secrets)"
+else
+    SCOPE="curated data"; (( DO_HOME )) && SCOPE+=" + dotfiles"
+fi
 section "Sync FROM NAS"
 info "source : $NAS_HOME/"
 info "target : $HOME/"
+info "scope  : $SCOPE"
 info "mode   : $( ((MIRROR)) && echo 'mirror (--delete local-only)' || echo 'additive' )$( ((DRYRUN)) && echo '  [dry-run]' )"
 confirm "Pull data from the NAS onto this machine?" || die "aborted"
+
+# --- full mirror (the exact pull-counterpart of do_backup) ----------------
+# One rsync driven by the shared files-from/exclude-from, root = NAS Home, so
+# anchored excludes (e.g. .config/Code/logs) match exactly as they do on push.
+if [[ $FULL == 1 ]]; then
+    section "Pulling FULL home (do_backup set)"
+    info "files-from: $HOME_INCLUDE_FILE"
+    "${RSYNC[@]}" --files-from="$HOME_INCLUDE_FILE" --exclude-from="$HOME_EXCLUDE_FILE" \
+        "$NAS_HOME/" "$HOME/"
+    # secrets came across in the mirror — re-tighten them (rsync preserves perms,
+    # but a fresh box / different umask makes this a cheap belt-and-braces).
+    if [[ $DRYRUN == 0 ]]; then
+        [[ -d $HOME/.gnupg ]] && { find "$HOME/.gnupg" -type d -exec chmod 700 {} + ; find "$HOME/.gnupg" -type f -exec chmod 600 {} + ; }
+        [[ -d $HOME/.ssh ]]   && { find "$HOME/.ssh"   -type d -exec chmod 700 {} + ; find "$HOME/.ssh"   -type f -exec chmod 600 {} + ; }
+    fi
+    section "Sync complete"
+    (( DRYRUN )) && info "dry-run only — nothing was written. Drop --dry-run to apply."
+    exit 0
+fi
 
 # --- bulk data ------------------------------------------------------------
 if [[ $DO_DATA == 1 ]]; then

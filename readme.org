@@ -53,9 +53,10 @@ Below is a brief description of each script and its functionality.
 
 ** Backup Scripts
 
-- *do_backup*: Backs up specific files or directories via rsync.
-- *do_backup_excl*: Backs up files, excluding specified directories.
-- *do_backup_incl*: Backs up specific files or directories based on inclusion rules.
+- *do_backup*: Pushes the home set to the NAS via rsync (with image/video tidy-up).
+  Its include/exclude lists now live in =bootstrap/lib/home-include.txt= and
+  =bootstrap/lib/home-exclude.txt= — the shared single source of truth that also
+  drives =bootstrap/sync-from-nas.sh= (pull) and =bootstrap/refresh-usb.sh= (stick).
 
 ** Screenshot & Screen Recording
 

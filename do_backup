@@ -2,7 +2,10 @@
 FILTERSTR='\.[df]\.\.t\.\.\.\.\.\.'
 BACKUPDIR="$HOME/.Trash-rsync/$(date +%Y%m%d)"
 BASE="/run/media/jdyer"
-INC_FILE="$HOME/bin/do_backup_incl"
+# Include/exclude lists are the shared single source of truth in the bootstrap
+# repo (also drives refresh-usb.sh and sync-from-nas.sh). See lib/payload.sh.
+INC_FILE="$HOME/bin/bootstrap/lib/home-include.txt"
+EXC_FILE="$HOME/bin/bootstrap/lib/home-exclude.txt"
 
 function list_filters ()
 {
@@ -219,7 +222,7 @@ function do_it ()
     RSYNC_CMD=(
         rsync -rltsiPv --no-g --copy-links --delete --size-only --modify-window=4
         --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*'
-        --exclude-from="$HOME/bin/do_backup_excl"
+        --exclude-from="$EXC_FILE"
         "${EXTRA_EXCLUDES[@]}"
     )
     EXTRA_EXCLUDES=()
