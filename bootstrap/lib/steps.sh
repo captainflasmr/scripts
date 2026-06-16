@@ -81,6 +81,10 @@ step_groups() {
 # Optional: only useful on machines that live on your LAN with the NAS.
 step_cron_nasmount() {
     section "Cron / NAS auto-mount"
+    # NFS can't mount onto a missing dir; create ~/nas now so the first @reboot
+    # mount (and a manual sync-from-nas.sh) works without hand-creating it.
+    mkdir -p "$HOME/nas"
+    info "mount point ready: $HOME/nas"
     case "$DISTRO" in
         arch) sudo pacman -S --needed --noconfirm cronie >/dev/null 2>&1
               sudo systemctl enable --now cronie ;;

@@ -8,6 +8,12 @@ TARGET_IPS=("192.168.0.10" "192.168.0.11" "192.168.7.103")
 SCAN_RANGE=({100..110})
 SUBNET="192.168.7"
 
+# Ensure the mount point exists — a fresh install won't have ~/nas yet, and NFS
+# can't mount onto a missing directory. (Runs as root from cron; hand it back to
+# the user so they can use ~/nas even while the NAS is unmounted.)
+mkdir -p "$MOUNT_POINT"
+chown jdyer "$MOUNT_POINT" 2>/dev/null || true
+
 echo "Starting NAS mount loop..."
 
 while [[ ! -d "$MOUNT_POINT/Home" ]]; do
