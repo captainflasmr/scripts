@@ -155,6 +155,48 @@ step_quirk_samsung_backlight() {
     fi
 }
 
+# --- X11 keyboard: custom xkb keymap (Mint/Cinnamon) ----------------------
+# Sway (Arch) loads this via the input `xkb_file` setting; X11 has no equivalent
+# persistent config, so we compile the keymap into the running server at every
+# login through an autostart entry. The .xkb file carries the sticky modifiers
+# and the Caps/Right-Alt -> Ctrl remaps. No-op on Arch (sway handles it).
+step_mint_keymap() {
+    [[ $DISTRO == mint ]] || { info "xkb keymap: sway handles this on Arch — skipping"; return 0; }
+    section "X11 keyboard keymap (sticky modifiers)"
+    local keymap="$HOME/.emacs.d/Emacs-vanilla/keymap/keymap_with_sticky_modifiers.xkb"
+    [[ -f $keymap ]] || { warn "keymap not found: $keymap (restore home first) — skipping"; return 0; }
+    # xkbcomp ships in x11-xkb-utils on Debian/Mint.
+    if ! command -v xkbcomp &>/dev/null; then
+        info "installing x11-xkb-utils (provides xkbcomp)"
+        "${APT[@]}" install -y x11-xkb-utils || warn "could not install x11-xkb-utils"
+    fi
+    # Autostart entry — re-applies on every login. The short sleep lets the
+    # desktop's input daemon settle first so it doesn't clobber the keymap.
+    local dir="$HOME/.config/autostart"; mkdir -p "$dir"
+    local desktop="$dir/xkb-sticky-keymap.desktop"
+    cat > "$desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Custom XKB keymap (sticky modifiers)
+Comment=Compile keymap_with_sticky_modifiers.xkb into the X server at login
+Exec=sh -c 'sleep 2; xkbcomp -w0 "\$HOME/.emacs.d/Emacs-vanilla/keymap/keymap_with_sticky_modifiers.xkb" "\$DISPLAY"'
+OnlyShowIn=X-Cinnamon;XFCE;MATE;GNOME;
+X-GNOME-Autostart-enabled=true
+NoDisplay=true
+EOF
+    info "autostart written: $desktop"
+    # Apply immediately if we're in an X11 session right now.
+    if [[ -n ${DISPLAY:-} ]] && command -v xkbcomp &>/dev/null; then
+        if xkbcomp -w0 "$keymap" "$DISPLAY" 2>/dev/null; then
+            info "keymap applied to current display $DISPLAY"
+        else
+            warn "could not apply to $DISPLAY now (will apply at next login)"
+        fi
+    else
+        info "no X11 display in this shell — will apply at next login"
+    fi
+}
+
 # --- mu / mu4e email index ------------------------------------------------
 # Reads personal addresses from .mbsyncrc so nothing is hardcoded here.
 step_mu_init() {
