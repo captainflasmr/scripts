@@ -84,7 +84,7 @@ step_cron_nasmount() {
     case "$DISTRO" in
         arch) sudo pacman -S --needed --noconfirm cronie >/dev/null 2>&1
               sudo systemctl enable --now cronie ;;
-        mint) sudo apt-get install -y cron >/dev/null 2>&1
+        mint) "${APT[@]}" install -y cron >/dev/null 2>&1
               sudo systemctl enable --now cron ;;
     esac
     local job="@reboot $HOME/bin/startup_root.sh"

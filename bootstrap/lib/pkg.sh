@@ -7,6 +7,14 @@
 
 PKG_DIR="${PKG_DIR:-$BOOTSTRAP_DIR/packages}"
 
+# apt invoked non-interactively: DEBIAN_FRONTEND=noninteractive stops debconf
+# opening menus (e.g. the Postfix "mail server configuration" prompt that emacs
+# drags in via its mail-transport-agent recommendation), and the dpkg conf
+# options keep existing config files without asking on upgrades. Set as args so
+# the env var survives sudo regardless of the sudoers env_keep policy.
+APT=( sudo DEBIAN_FRONTEND=noninteractive apt-get
+      -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold )
+
 # read a package list file -> stdout, one package per line, comments stripped
 _read_list() {
     local f="$PKG_DIR/$1"
@@ -32,7 +40,7 @@ pkg_update() {
     section "System update"
     case "$DISTRO" in
         arch) sudo pacman -Syu --noconfirm ;;
-        mint) sudo apt-get update && sudo apt-get -y upgrade ;;
+        mint) "${APT[@]}" update && "${APT[@]}" -y upgrade ;;
         *)    warn "unknown distro, skipping system update" ;;
     esac
     if command -v flatpak &>/dev/null; then
@@ -50,7 +58,7 @@ _native_install_one() {
                 || warn "FAILED: $p" ;;
         mint)
             if dpkg -s "$p" &>/dev/null; then info "skip (installed): $p"; return; fi
-            info "apt: $p"; sudo apt-get install -y "$p" || warn "FAILED: $p" ;;
+            info "apt: $p"; "${APT[@]}" install -y "$p" || warn "FAILED: $p" ;;
     esac
 }
 
@@ -97,7 +105,7 @@ pkg_remove() {
         [[ -z $p ]] && continue
         case "$DISTRO" in
             arch) pacman -Qi "$p" &>/dev/null && { info "remove: $p"; sudo pacman -Rns --noconfirm "$p" || warn "could not remove $p"; } ;;
-            mint) dpkg -s "$p" &>/dev/null && { info "remove: $p"; sudo apt-get purge -y "$p" || warn "could not remove $p"; } ;;
+            mint) dpkg -s "$p" &>/dev/null && { info "remove: $p"; "${APT[@]}" purge -y "$p" || warn "could not remove $p"; } ;;
         esac
     done <<< "$list"
 }
