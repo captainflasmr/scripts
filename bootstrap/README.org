@@ -134,4 +134,5 @@ All three directions read the same definitions in =lib/=, so nothing drifts:
 - The Mint list is *curated*, not auto-translated. Cinnamon/X11 means the whole Wayland stack is omitted; a few apps (vscode, zed, veracrypt, ollama) have no apt package and are noted as TODO in =mint-apt.txt=.
 - Package install failures are warnings, not fatal — the run continues and prints what failed so you can chase names afterward.
 - The NAS-mount cron and Samsung backlight fix are *opt-in* prompts; they only make sense on specific machines.
+- The display/login manager is only disabled+masked on *Arch* (which launches its compositor from the shell). On Mint the login manager is left running. If a Mint box already had it masked, undo with =sudo systemctl unmask lightdm && sudo systemctl enable --now lightdm=.
 - Legacy scripts (=install.sh=, =install-from-nas.sh=, =install-minimal-sway.sh=, …) in =~/bin= are superseded by this. Keep or delete them as you like.

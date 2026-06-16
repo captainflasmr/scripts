@@ -85,7 +85,7 @@ fi
 if [[ $PACKAGES_ONLY == 1 ]]; then step_done; exit 0; fi
 
 # --- restore + system tweaks ----------------------------------------------
-step_disable_display_manager
+step_disable_display_manager   # self-skips on Mint; only disables the DM on Arch
 step_restore_home
 [[ $DO_SECRETS == 1 ]] && step_restore_secrets
 [[ $DO_DATA    == 1 ]] && step_restore_data

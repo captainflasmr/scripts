@@ -97,8 +97,15 @@ step_cron_nasmount() {
 }
 
 # --- disable display manager (greetd / sddm / gdm / lightdm) -------------
+# Arch only: that box launches its Wayland compositor from the shell, so a DM
+# would just get in the way. Mint (Cinnamon/X11) needs its login manager, so we
+# leave it well alone there.
 step_disable_display_manager() {
     section "Display manager"
+    if [[ $DISTRO != arch ]]; then
+        info "keeping the display/login manager on $DISTRO (only disabled on Arch)"
+        return 0
+    fi
     local dm
     for dm in greetd sddm gdm lightdm lxdm; do
         if systemctl cat "$dm.service" &>/dev/null; then
