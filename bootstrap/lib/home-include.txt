@@ -1,0 +1,42 @@
+# home-include.txt - the canonical "full home" set: every path pushed to the
+# NAS by do_backup and pulled back by 'sync-from-nas.sh --full'. rsync
+# --files-from format: one path (relative to $HOME) per line, '#' comments.
+# This is the SUPERSET. The curated USB-stick subset lives in payload.sh.
+#.mozilla
+.authinfo
+.bash_history
+.bash_logout
+.bash_profile
+.bashrc
+.config
+.davfs2
+.dircolors
+.emacs.d
+.gnupg
+.ignore
+.local
+.password-store
+.ssh
+.profile
+Applications
+DCIM
+KritaRecorder
+Snapseed
+Sync
+Videos
+bin
+publish
+scripts
+source
+wallpaper
+Pictures/digikam4.db
+Pictures/thumbnails-digikam.db
+Pictures/similarity.db
+Pictures/recognition.db
+.face.icon
+.mbsyncpass-captainflasmr
+.mbsyncpass-james
+.mbsyncpass-jimbob
+.mbsyncrc
+.thunderbird
+Maildir
