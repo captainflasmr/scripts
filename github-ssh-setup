@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+#
+# github-ssh-setup - get GitHub pushes working from headless tools (Emacs/Magit).
+#
+# WHY THIS EXISTS
+#   Pushing to an https://github.com/... remote needs a username + token, and
+#   git tries to *prompt* for them. Inside Emacs/Magit (or any subprocess with
+#   no terminal) that prompt fails with:
+#       fatal: could not read Username for 'https://github.com': No such device
+#       or address
+#   The fix is to use SSH remotes (git@github.com:...) which authenticate with
+#   your SSH key and never prompt. This script rewrites any https GitHub remote
+#   to its SSH equivalent across all your repos.
+#
+# SSH KEY (one-time, if you don't have one)
+#   1. Generate:   ssh-keygen -t ed25519 -C "captainflasmr@gmail.com"
+#   2. Show it:    cat ~/.ssh/id_ed25519.pub
+#   3. Add it at:  https://github.com/settings/keys  (New SSH key, paste it)
+#   4. Test:       ssh -T git@github.com   -> "Hi <user>! You've successfully..."
+#
+# PERSONAL ACCESS TOKEN (only needed for the `gh` CLI, NOT for git push over SSH)
+#   The gh CLI uses a token, separate from your SSH key. If `gh auth status`
+#   says the token is invalid/expired, generate a new one:
+#   1. Visit:      https://github.com/settings/tokens   (Tokens "classic")
+#   2. Generate new token (classic), give it a name + expiry.
+#   3. Scopes:     repo, read:org, admin:public_key   (what gh expects)
+#   4. Copy the token (shown once!) and pass it to this script with --auth.
+#   The token is read from stdin into gh, never echoed to your shell history.
+#
+# USAGE
+#   github-ssh-setup                 Scan default roots, convert https->ssh remotes
+#   github-ssh-setup -n              Dry run: show what would change, change nothing
+#   github-ssh-setup DIR [DIR...]    Scan the given directories instead of defaults
+#   github-ssh-setup --auth          Also (re)authenticate the gh CLI with a token
+#   github-ssh-setup -h | --help     Show this help
+#
+set -euo pipefail
+
+BOLD='\033[1m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+info()  { echo -e "${CYAN}$1${NC}"; }
+ok()    { echo -e "${GREEN}$1${NC}"; }
+warn()  { echo -e "${YELLOW}$1${NC}"; }
+err()   { echo -e "${RED}$1${NC}" >&2; }
+header() { echo -e "\n${BOLD}${CYAN}=== $1 ===${NC}"; }
+
+# Default directories to search for git repos (one level deep + the root itself).
+DEFAULT_ROOTS=("$HOME" "$HOME/.emacs.d" "$HOME/source/repos")
+
+DRY_RUN=0
+DO_AUTH=0
+ROOTS=()
+
+usage() { sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; s/^#$//' | sed '$d'; }
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -n|--dry-run) DRY_RUN=1 ;;
+    --auth)       DO_AUTH=1 ;;
+    -h|--help)    usage; exit 0 ;;
+    -*)           err "Unknown option: $1"; exit 2 ;;
+    *)            ROOTS+=("$1") ;;
+  esac
+  shift
+done
+
+[ ${#ROOTS[@]} -eq 0 ] && ROOTS=("${DEFAULT_ROOTS[@]}")
+
+# Find .git directories under the roots, dedupe, and collect their repo paths.
+find_repos() {
+  local root
+  for root in "${ROOTS[@]}"; do
+    [ -d "$root" ] || continue
+    # The root itself, plus anything nested below it.
+    find "$root" -type d -name .git -prune 2>/dev/null
+  done | sed 's#/\.git$##' | sort -u
+}
+
+convert_remotes() {
+  header "Converting https GitHub remotes to SSH"
+  local changed=0 ssh=0 skipped=0 repo url new
+  while IFS= read -r repo; do
+    [ -n "$repo" ] || continue
+    url=$(git -C "$repo" remote get-url origin 2>/dev/null) || continue
+    case "$url" in
+      https://github.com/*)
+        new="git@github.com:${url#https://github.com/}"
+        if [ "$DRY_RUN" -eq 1 ]; then
+          warn "would convert: ${repo/#$HOME/\~}"
+          echo "    $url -> $new"
+        else
+          git -C "$repo" remote set-url origin "$new"
+          ok "converted: ${repo/#$HOME/\~}"
+          echo "    -> $new"
+        fi
+        changed=$((changed + 1))
+        ;;
+      git@github.com:*)
+        ssh=$((ssh + 1)) ;;
+      *)
+        skipped=$((skipped + 1)) ;;  # non-GitHub or no origin
+    esac
+  done < <(find_repos)
+
+  echo ""
+  if [ "$DRY_RUN" -eq 1 ]; then
+    info "Dry run: $changed would change, $ssh already SSH, $skipped other/none."
+  else
+    ok "Done: $changed converted, $ssh already SSH, $skipped other/none."
+  fi
+}
+
+auth_gh() {
+  header "Authenticating the gh CLI"
+  if ! command -v gh >/dev/null 2>&1; then
+    err "gh CLI not found. Install it first (e.g. your package manager)."
+    return 1
+  fi
+
+  warn "Create a token (classic) at https://github.com/settings/tokens"
+  warn "Scopes: repo, read:org, admin:public_key"
+  printf "Paste token (input hidden): "
+  local token
+  read -rs token
+  echo ""
+  if [ -z "$token" ]; then
+    err "No token entered; skipping gh auth."
+    return 1
+  fi
+
+  # --with-token reads from stdin; nothing is written to shell history.
+  printf '%s' "$token" | gh auth login --hostname github.com --git-protocol ssh --with-token
+  unset token
+  echo ""
+  gh auth status
+}
+
+# --- main ---
+convert_remotes
+[ "$DO_AUTH" -eq 1 ] && auth_gh
+
+echo ""
+info "Tip: verify a repo with  git -C <repo> remote -v"
+info "     verify gh with       gh auth status"
