@@ -197,6 +197,81 @@ EOF
     fi
 }
 
+# --- Cinnamon keybindings (Mint) ------------------------------------------
+# Bespoke shortcuts via gsettings (persisted in dconf, so no autostart needed).
+# Additive: appends our combo to whatever Cinnamon already binds, so the stock
+# Ctrl+Alt+Arrow shortcuts keep working. No-op on Arch (sway has its own binds).
+# Add more rows to the `binds` table below — "<schema-key> <accelerator>".
+# Append an accelerator to a built-in WM action (additive, idempotent).
+_kb_add() {  # _kb_add <schema> <key> <accelerator>
+    local schema="$1" key="$2" combo="$3" cur
+    cur=$(gsettings get "$schema" "$key" 2>/dev/null) || { warn "no such key: $key"; return 0; }
+    if [[ $cur == *"'$combo'"* ]]; then info "$key already has $combo"; return 0; fi
+    local newval
+    if [[ $cur == "@as []" || $cur == "[]" ]]; then newval="['$combo']"
+    else newval="${cur%]}, '$combo']"; fi
+    if gsettings set "$schema" "$key" "$newval" 2>/dev/null; then info "$key += $combo"
+    else warn "failed to set $key"; fi
+}
+# Define a Cinnamon custom keybinding that runs a command (idempotent: keyed by
+# a stable slug, so re-running just updates it rather than duplicating).
+_kb_custom() {  # _kb_custom <slug> <accelerator> <command> <friendly-name>
+    local slug="$1" accel="$2" cmd="$3" name="$4"
+    local base="org.cinnamon.desktop.keybindings"
+    local ck="org.cinnamon.desktop.keybindings.custom-keybinding"
+    local path="/org/cinnamon/desktop/keybindings/custom-keybindings/$slug/"
+    gsettings set "$ck:$path" name    "$name" 2>/dev/null || { warn "custom $slug: set failed"; return 0; }
+    gsettings set "$ck:$path" command "$cmd"   2>/dev/null
+    gsettings set "$ck:$path" binding "['$accel']" 2>/dev/null
+    local cur; cur=$(gsettings get "$base" custom-list 2>/dev/null)
+    if [[ $cur != *"'$slug'"* ]]; then
+        local newval
+        if [[ $cur == "@as []" || $cur == "[]" ]]; then newval="['$slug']"
+        else newval="${cur%]}, '$slug']"; fi
+        gsettings set "$base" custom-list "$newval" 2>/dev/null
+    fi
+    info "custom: $accel -> $cmd"
+}
+step_mint_keybindings() {
+    [[ $DISTRO == mint ]] || { info "keybindings: Cinnamon-only — skipping (sway has its own)"; return 0; }
+    section "Cinnamon keybindings"
+    command -v gsettings &>/dev/null || { warn "gsettings not found — skipping"; return 0; }
+    local wm="org.cinnamon.desktop.keybindings.wm"
+    if ! gsettings list-schemas 2>/dev/null | grep -qx "$wm"; then
+        warn "$wm not available (not a Cinnamon session?) — skipping"; return 0
+    fi
+
+    # --- window-manager actions (ported from sway config.d/default) -------
+    local -a binds=(
+        "switch-to-workspace-left  <Super>u"          # sway: $mod+u workspace prev
+        "switch-to-workspace-right <Super>i"          # sway: $mod+i workspace next
+        "close                     <Super>q"          # sway: $mod+q kill
+        "toggle-fullscreen         <Super>m"          # sway: $mod+m fullscreen
+    )
+    local n
+    for n in 1 2 3 4 5 6 7 8; do                      # sway: $mod+N / $mod+Shift+N
+        binds+=("switch-to-workspace-$n <Super>$n")
+        binds+=("move-to-workspace-$n <Super><Shift>$n")
+    done
+    local row key combo
+    for row in "${binds[@]}"; do
+        read -r key combo <<< "$row"
+        _kb_add "$wm" "$key" "$combo"
+    done
+
+    # --- application launchers (sway 'exec' binds -> Cinnamon customs) -----
+    # Commands adapted for Mint/X11 (kitty not alacritty; no Wayland env vars).
+    _kb_custom bs-term     "<Super>Return"   "kitty"                            "Terminal"
+    _kb_custom bs-term-t   "<Super>t"        "kitty"                            "Terminal (t)"
+    _kb_custom bs-firefox  "<Super>b"        "firefox"                          "Firefox"
+    _kb_custom bs-files    "<Super>e"        "thunar $HOME/DCIM/Camera"         "Files (DCIM/Camera)"
+    _kb_custom bs-mail     "<Super>n"        "thunderbird"                      "Thunderbird"
+    _kb_custom bs-emacs    "<Super>x"        "emacsclient -c -a emacs"          "Emacs"
+    _kb_custom bs-thanos   "<Super>z"        "emacsclient --eval '(thanos/type)'" "Emacs thanos/type"
+    _kb_custom bs-shot     "<Super><Shift>s" "$HOME/bin/screenshot.sh"          "Screenshot"
+    _kb_custom bs-rofi     "<Super>slash"    "rofi -matching regex -show drun"  "Rofi (app launcher)"
+}
+
 # --- mu / mu4e email index ------------------------------------------------
 # Reads personal addresses from .mbsyncrc so nothing is hardcoded here.
 step_mu_init() {
