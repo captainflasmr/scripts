@@ -99,7 +99,6 @@ function tidy_up() {
         
         # Check if already processed with this checksum
         if grep -q "^$checksum " "$log_file"; then
-            echo "Skipping already processed video: $A"
             return 0
         fi
         
@@ -162,6 +161,7 @@ function tidy_up() {
     echo "Processing Images..."
     echo "=========================================="
     for DIR in $DIRS; do
+        [[ -d "$HOME/$DIR" ]] || { echo "skip (not found): $DIR"; continue; }
         cd "$HOME/$DIR" || continue
         echo
         echo "**************** Checking $DIR for images"
@@ -181,6 +181,7 @@ function tidy_up() {
     echo "Processing Videos..."
     echo "=========================================="
     for DIR in $VIDEO_DIRS; do
+        [[ -d "$HOME/$DIR" ]] || { echo "skip (not found): $DIR"; continue; }
         cd "$HOME/$DIR" || continue
         echo
         echo "**************** Checking $DIR for videos"
@@ -220,7 +221,7 @@ function do_input ()
 function do_it ()
 {
     RSYNC_CMD=(
-        rsync -rltsiPv --no-g --copy-links --delete --size-only --modify-window=4
+        rsync -rltsiPv --no-g --copy-links --delete --size-only --modify-window=4 --ignore-missing-args
         --filter='P /lost+found'
         --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*'
         --exclude-from="$EXC_FILE"
