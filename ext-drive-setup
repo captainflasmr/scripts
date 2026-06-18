@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+#
+# ext-drive-setup - prepare an external USB/SATA drive for Linux backups.
+#
+# WHY THIS EXISTS
+#   exFAT/FAT/NTFS drives can't store a faithful Linux home backup: filenames
+#   with ':' (e.g. Maildir's "...:2,S" flags) are illegal, so rsync aborts with
+#   "code 23 - some files/attrs were not transferred". The fix is to use ext4.
+#   But a freshly-made ext4 filesystem's root directory is owned by root:root,
+#   so udisks mounts it read-only-to-you and every write gives "Permission
+#   denied". And if mkfs is run without a label, udisks mounts it by UUID
+#   (/run/media/<user>/<uuid>) instead of the friendly /run/media/<user>/<label>
+#   path that scripts like do_backup / mysync expect.
+#
+#   This script does the whole dance correctly:
+#     1. reformat the chosen partition to ext4 with a label   (optional)
+#     2. mount it via udisks                                   (-> /run/media/<user>/<label>)
+#     3. chown its root to you so you can actually write to it (always)
+#     4. create the Home/ dir that do_backup expects on the target (always)
+#
+# USAGE
+#   ext-drive-setup                     Interactive: pick a device, choose actions
+#   ext-drive-setup -d /dev/sdX1        Operate on this partition
+#   ext-drive-setup -d /dev/sdX1 -l Backup        Reformat to ext4, label "Backup"
+#   ext-drive-setup -d /dev/sdX1 --fix-perms      Just fix ownership (no reformat)
+#   ext-drive-setup -l NAME             Default label when reformatting (def: Backup)
+#   ext-drive-setup -n | --dry-run      Show what would run, change nothing
+#   ext-drive-setup -h | --help         Show this help
+#
+# SAFETY
+#   - Refuses to touch the disk that hosts your running system ("/").
+#   - Never reformats without an explicit typed confirmation.
+#   - Reformatting ERASES THE WHOLE PARTITION. Back up anything you need first.
+#
+set -euo pipefail
+
+BOLD='\033[1m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
+
+LABEL="Backup"
+DEVICE=""
+FORMAT=""        # set to 1 to reformat, "" to ask, "no" with --fix-perms
+DRYRUN=0
+
+say()  { echo -e "$@"; }
+err()  { echo -e "${RED}ERROR:${NC} $*" >&2; }
+run()  {
+    if [[ $DRYRUN -eq 1 ]]; then
+        echo -e "${YELLOW}[dry-run]${NC} $*"
+    else
+        echo -e "${BOLD}+ $*${NC}"
+        "$@"
+    fi
+}
+
+usage() { sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; s/^#//' | head -n -1; exit "${1:-0}"; }
+
+# ---- args ------------------------------------------------------------------
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -d|--device)  DEVICE="${2:-}"; shift 2 ;;
+        -l|--label)   LABEL="${2:-}";  shift 2 ;;
+        --fix-perms)  FORMAT="no";     shift ;;
+        --format)     FORMAT=1;        shift ;;
+        -n|--dry-run) DRYRUN=1;        shift ;;
+        -h|--help)    usage 0 ;;
+        *) err "unknown argument: $1"; usage 1 ;;
+    esac
+done
+
+command -v lsblk     >/dev/null || { err "lsblk not found"; exit 1; }
+command -v udisksctl >/dev/null || { err "udisksctl not found (install udisks2)"; exit 1; }
+command -v mkfs.ext4 >/dev/null || { err "mkfs.ext4 not found (install e2fsprogs)"; exit 1; }
+
+# ---- figure out the system disk so we never clobber it ---------------------
+ROOT_SRC="$(findmnt -no SOURCE / || true)"
+SYS_DISK="$(lsblk -no PKNAME "$ROOT_SRC" 2>/dev/null | head -1 || true)"
+
+# ---- pick a device ---------------------------------------------------------
+if [[ -z "$DEVICE" ]]; then
+    say "${BOLD}Block devices (the system disk /dev/$SYS_DISK is off-limits):${NC}"
+    lsblk -o NAME,PATH,SIZE,FSTYPE,LABEL,TRAN,HOTPLUG,MOUNTPOINT
+    echo
+    read -rp "Which partition to set up (e.g. /dev/sda1)? " DEVICE
+fi
+
+[[ -b "$DEVICE" ]] || { err "$DEVICE is not a block device"; exit 1; }
+
+DEV_DISK="$(lsblk -no PKNAME "$DEVICE" 2>/dev/null | head -1 || true)"
+if [[ -z "$DEV_DISK" ]]; then
+    err "$DEVICE looks like a whole disk, not a partition. Pass a partition like ${DEVICE}1."
+    exit 1
+fi
+if [[ -n "$SYS_DISK" && "$DEV_DISK" == "$SYS_DISK" ]]; then
+    err "$DEVICE is on your SYSTEM disk (/dev/$SYS_DISK). Refusing."
+    exit 1
+fi
+
+CUR_FS="$(lsblk -no FSTYPE "$DEVICE" | head -1)"
+CUR_LABEL="$(lsblk -no LABEL "$DEVICE" | head -1)"
+CUR_SIZE="$(lsblk -no SIZE "$DEVICE" | head -1)"
+say
+say "Target : ${BOLD}${DEVICE}${NC}  (${CUR_SIZE}, fs=${CUR_FS:-none}, label=${CUR_LABEL:-none})"
+
+# ---- decide whether to reformat --------------------------------------------
+if [[ -z "$FORMAT" ]]; then
+    read -rp "Reformat this partition to ext4 (ERASES ALL DATA)? [y/N] " ans
+    [[ "$ans" =~ ^[Yy] ]] && FORMAT=1 || FORMAT="no"
+fi
+
+# ---- always unmount before touching it -------------------------------------
+if findmnt -no TARGET "$DEVICE" >/dev/null 2>&1; then
+    run udisksctl unmount -b "$DEVICE" || true
+fi
+
+# ---- reformat (optional, destructive) --------------------------------------
+if [[ "$FORMAT" == "1" ]]; then
+    [[ -n "$LABEL" ]] || { err "a label is required for reformat (-l NAME)"; exit 1; }
+    say "${RED}${BOLD}About to ERASE $DEVICE and make ext4 labelled '$LABEL'.${NC}"
+    read -rp "Type the label '${LABEL}' to confirm: " confirm
+    [[ "$confirm" == "$LABEL" ]] || { err "confirmation did not match; aborting."; exit 1; }
+    run sudo mkfs.ext4 -F -L "$LABEL" "$DEVICE"
+else
+    # not reformatting; if a label was supplied and differs, relabel ext-only
+    if [[ -n "$LABEL" && "$CUR_LABEL" != "$LABEL" && "$CUR_FS" == ext* ]]; then
+        run sudo e2label "$DEVICE" "$LABEL"
+    fi
+fi
+
+# ---- mount via udisks ------------------------------------------------------
+# A freshly-made filesystem is racy: udev needs a moment to re-read the new
+# fs before udisks can mount it, so settle and retry rather than one-shot.
+if [[ $DRYRUN -eq 1 ]]; then
+    echo -e "${YELLOW}[dry-run]${NC} udevadm settle; udisksctl mount -b $DEVICE (with retries)"
+    MP="/run/media/$(id -un)/${LABEL:-<label>}"
+else
+    sudo udevadm settle 2>/dev/null || true
+    MP=""
+    for _ in 1 2 3 4 5 6; do
+        MP="$(findmnt -no TARGET "$DEVICE" 2>/dev/null || true)"
+        [[ -n "$MP" ]] && break
+        udisksctl mount -b "$DEVICE" >/dev/null 2>&1 || true
+        sleep 1
+    done
+    if [[ -z "$MP" ]]; then
+        err "could not mount $DEVICE; replug it and re-run: ext-drive-setup -d $DEVICE --fix-perms"
+        exit 1
+    fi
+    say "mounted at ${BOLD}${MP}${NC}"
+fi
+
+# ---- fix ownership so you can write (always) -------------------------------
+# Use `id -un`, not $USER: $USER is empty in non-login/sudo/cron environments,
+# which would make chown set only the group and silently leave owner=root.
+ME="$(id -un)"
+GRP="$(id -gn)"
+run sudo chown "$ME:$GRP" "$MP"
+
+# ---- create the Home dir the backup scripts expect -------------------------
+# Create via sudo + explicit ownership so it succeeds regardless of how the
+# parent's permissions ended up.
+run sudo install -d -o "$ME" -g "$GRP" "$MP/Home"
+
+say
+say "${GREEN}Done.${NC} ${DEVICE} is ready at ${BOLD}${MP}${NC}"
+say "  owner : $(stat -c '%U:%G' "$MP" 2>/dev/null || echo "$ME:$GRP")"
+say "  test  : touch \"$MP/.write-test\" && rm \"$MP/.write-test\" && echo OK"
