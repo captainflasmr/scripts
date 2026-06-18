@@ -49,8 +49,13 @@ warn()  { echo -e "${YELLOW}$1${NC}"; }
 err()   { echo -e "${RED}$1${NC}" >&2; }
 header() { echo -e "\n${BOLD}${CYAN}=== $1 ===${NC}"; }
 
-# Default directories to search for git repos (one level deep + the root itself).
-DEFAULT_ROOTS=("$HOME" "$HOME/.emacs.d" "$HOME/source/repos")
+# Default directories to search for git repos. Targeted on purpose: scanning all
+# of $HOME walks media/cache trees and is painfully slow. Pass dirs as args to
+# override these.
+DEFAULT_ROOTS=("$HOME/.config" "$HOME/.emacs.d" "$HOME/bin" "$HOME/source/repos")
+
+# How deep to descend under each root when looking for .git directories.
+MAX_DEPTH=8
 
 DRY_RUN=0
 DO_AUTH=0
@@ -72,12 +77,14 @@ done
 [ ${#ROOTS[@]} -eq 0 ] && ROOTS=("${DEFAULT_ROOTS[@]}")
 
 # Find .git directories under the roots, dedupe, and collect their repo paths.
+# Prunes heavy/irrelevant trees and stops .git from being descended into.
 find_repos() {
   local root
   for root in "${ROOTS[@]}"; do
     [ -d "$root" ] || continue
-    # The root itself, plus anything nested below it.
-    find "$root" -type d -name .git -prune 2>/dev/null
+    find "$root" -maxdepth "$MAX_DEPTH" \
+      \( -type d -name node_modules -o -type d -name .cache \) -prune -o \
+      -type d -name .git -prune -print 2>/dev/null
   done | sed 's#/\.git$##' | sort -u
 }
 
