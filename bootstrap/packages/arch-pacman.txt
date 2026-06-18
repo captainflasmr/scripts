@@ -29,6 +29,7 @@ drawio-desktop-appimage
 dunst
 dvd+rw-tools
 easytag
+eza
 emacs-wayland
 fastfetch
 fd

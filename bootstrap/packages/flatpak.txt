@@ -1,3 +1,4 @@
 # Flatpaks (flathub app IDs). Common to Arch and Mint. Comment out with #.
 com.github.d4nj1.tlpui
+org.localsend.localsend_app
 #org.gtk.Gtk3theme.Adwaita-dark

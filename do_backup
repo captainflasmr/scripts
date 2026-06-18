@@ -1,7 +1,13 @@
 #!/bin/bash
 FILTERSTR='\.[df]\.\.t\.\.\.\.\.\.'
 BACKUPDIR="$HOME/.Trash-rsync/$(date +%Y%m%d)"
-BASE="/run/media/jdyer"
+if [[ -d /run/media/jdyer ]]; then
+    BASE="/run/media/jdyer"
+elif [[ -d /media/jdyer ]]; then
+    BASE="/media/jdyer"
+else
+    BASE="/media/jdyer"
+fi
 # Include/exclude lists are the shared single source of truth in the bootstrap
 # repo (also drives refresh-usb.sh and sync-from-nas.sh). See lib/payload.sh.
 INC_FILE="$HOME/bin/bootstrap/lib/home-include.txt"

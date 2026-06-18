@@ -11,6 +11,7 @@
 acpi
 alsa-utils
 btop
+eza
 calcurse
 cmake
 copyq
@@ -58,6 +59,11 @@ pipx
 python3-pyqt5
 cargo
 rustc
+
+# --- desktop integration (touchpad gestures) ---
+libinput-tools
+xdotool
+wmctrl
 
 # --- desktop apps ---
 audacity
@@ -129,6 +135,6 @@ podman
 # veracrypt        (PPA: launchpad.net/~unit193/+archive/ubuntu/encryption)
 # zed              (zed.dev install script)
 # visual-studio-code  (Microsoft apt repo)
-# localsend        (flatpak: org.localsend.localsend_app)
+# surfshark           (download .deb from my.surfshark.com — requires login)
 # ollama           (ollama.com/install.sh)
 # yt-dlp           (pipx install yt-dlp, apt version is often stale)

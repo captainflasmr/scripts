@@ -97,5 +97,6 @@ fi
 step_quirk_samsung_backlight
 step_mint_keymap
 step_mint_keybindings
+step_mint_touchpad_gestures
 step_mu_init
 step_done

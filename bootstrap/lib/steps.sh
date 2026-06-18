@@ -272,6 +272,60 @@ step_mint_keybindings() {
     _kb_custom bs-rofi     "<Super>slash"    "rofi -matching regex -show drun"  "Rofi (app launcher)"
 }
 
+# --- touchpad gestures (Mint/Cinnamon) ------------------------------------
+# libinput-gestures is not in the Mint apt repos, so we clone upstream and
+# install it. Maps 4-finger swipes to Cinnamon's workspace-switch shortcuts
+# (ctrl+alt+Left/Right), leaving Cinnamon's built-in 3-finger gestures alone.
+# No-op on Arch (sway has its own gesture bindings).
+step_mint_touchpad_gestures() {
+    [[ $DISTRO == mint ]] || { info "touchpad gestures: sway handles this on Arch — skipping"; return 0; }
+    section "Touchpad gestures (libinput-gestures)"
+    # Deps should already be in mint-apt.txt, but install defensively (the keymap
+    # step does the same for x11-xkb-utils).
+    local -a deps=( libinput-tools xdotool wmctrl )
+    local d
+    for d in "${deps[@]}"; do
+        if ! dpkg -s "$d" &>/dev/null; then
+            info "installing $d"
+            "${APT[@]}" install -y "$d" || warn "could not install $d"
+        fi
+    done
+
+    # Install libinput-gestures from upstream if the command is missing.
+    if ! command -v libinput-gestures &>/dev/null; then
+        local tmp; tmp=$(mktemp -d)
+        info "cloning libinput-gestures -> $tmp"
+        git clone --depth 1 https://github.com/bulletmark/libinput-gestures.git "$tmp/libinput-gestures" \
+            || { warn "clone failed — skipping gesture setup"; rm -rf "$tmp"; return 0; }
+        ( cd "$tmp/libinput-gestures" && sudo ./libinput-gestures-setup install ) \
+            || { warn "libinput-gestures-setup install failed"; rm -rf "$tmp"; return 0; }
+        rm -rf "$tmp"
+    else
+        info "libinput-gestures already installed"
+    fi
+
+    # Write the config if missing (don't clobber user customisations on re-run).
+    local cfg_dir="$HOME/.config"; mkdir -p "$cfg_dir"
+    local cfg="$cfg_dir/libinput-gestures.conf"
+    if [[ ! -f $cfg ]]; then
+        cat > "$cfg" <<'EOF'
+gesture swipe left 4  xdotool key ctrl+alt+Right
+gesture swipe right 4 xdotool key ctrl+alt+Left
+EOF
+        info "config written: $cfg"
+    else
+        info "config already present: $cfg"
+    fi
+
+    # Enable now + on login. Idempotent.
+    if command -v libinput-gestures-setup &>/dev/null; then
+        libinput-gestures-setup autostart start || warn "autostart start failed"
+        info "libinput-gestures enabled (autostart + running)"
+    else
+        warn "libinput-gestures-setup not on PATH — log out/in or re-run this step"
+    fi
+}
+
 # --- mu / mu4e email index ------------------------------------------------
 # Reads personal addresses from .mbsyncrc so nothing is hardcoded here.
 step_mu_init() {
