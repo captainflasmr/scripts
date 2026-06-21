@@ -13,6 +13,22 @@
 *~
 .#*
 .cache*
+# Claude Code: keep projects/ (conversations), sessions/, history.jsonl and
+# settings*.json; drop auth, caches and machine-local junk.
+.claude/.credentials.json
+.claude/.last-cleanup
+.claude/.last-update-result.json
+.claude/backups
+.claude/cache
+.claude/downloads
+.claude/file-history
+.claude/mcp-needs-auth-cache.json
+.claude/paste-cache
+.claude/plugins
+.claude/session-env
+.claude/shell-snapshots
+.claude/statsig
+.claude/telemetry
 .config/Antigravity
 .config/Code/User/workspaceStorage
 .config/Code/logs
@@ -43,7 +59,11 @@
 .local/share/icons
 .local/share/libvirt
 .local/share/nomic.ai
-.local/share/opencode
+# opencode: keep opencode.db* (sessions/conversations); drop auth + caches.
+.local/share/opencode/auth.json
+.local/share/opencode/log
+.local/share/opencode/repos
+.local/share/opencode/tool-output
 .local/share/pipx
 .local/share/rancher-desktop
 .local/share/sddm/xorg-session.log
@@ -76,6 +96,7 @@ node_modules
 __pycache__
 public
 public_html
+publish/obp-output
 qBittorrent
 source/repos/melpa
 syncthing

@@ -155,6 +155,35 @@ step_quirk_samsung_backlight() {
     fi
 }
 
+# --- USB quirk: JMicron 152d:a578 bridge (external Backup HDD) -------------
+# This USB-SATA bridge (my external Backup drive's enclosure) has buggy UAS
+# firmware that intermittently drops the link (uas_eh_device_reset /
+# DID_NO_CONNECT / USB disconnect), causing slow or failed mounts and, worse,
+# ext4 corruption that flips the filesystem read-only. Forcing plain BOT
+# instead of UAS via a usb-storage quirk makes it rock solid. Distro-agnostic
+# (/etc/modprobe.d is read by modprobe on both Arch and Debian/Mint). We do NOT
+# reload the module here: during a USB-stick install, usb-storage is in use by
+# the install medium itself — the quirk applies next time the module loads.
+step_quirk_usb_uas() {
+    confirm "Apply JMicron USB-SATA UAS quirk (external Backup drive fix)?" || { info "skipped"; return 0; }
+    local conf=/etc/modprobe.d/usb-quirks.conf
+    local id='152d:a578:u'
+    if [[ -f $conf ]] && grep -qF "$id" "$conf"; then
+        info "USB UAS quirk already present in $conf"
+        return 0
+    fi
+    if [[ -f $conf ]] && grep -q '^options usb-storage quirks=' "$conf"; then
+        # append our id to the existing comma-separated quirks list
+        sudo sed -i -E "s/^(options usb-storage quirks=[^[:space:]]+)/\1,$id/" "$conf"
+        info "appended $id to existing quirks line in $conf"
+    else
+        echo "options usb-storage quirks=$id" | sudo tee -a "$conf" >/dev/null
+        info "wrote $conf (options usb-storage quirks=$id)"
+    fi
+    info "Takes effect next time usb-storage loads — replug the drive or reboot."
+    info "Verify: dmesg | grep -i uas  -> expect 'UAS is ignored ... using usb-storage'"
+}
+
 # --- X11 keyboard: custom xkb keymap (Mint/Cinnamon) ----------------------
 # Sway (Arch) loads this via the input `xkb_file` setting; X11 has no equivalent
 # persistent config, so we compile the keymap into the running server at every

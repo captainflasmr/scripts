@@ -60,16 +60,18 @@ rsync -rltP --delete \
 chmod +x "$STICK"/install.sh "$STICK"/refresh-usb.sh 2>/dev/null || true
 
 # --- 2. home payload ------------------------------------------------------
+# One rsync driven by --files-from (the curated HOME_INCLUDE list) + the shared
+# --exclude-from. Same anchoring (root = $HOME) as do_backup/sync-from-nas, so
+# the exclude patterns in home-exclude.txt match identically, and files-from
+# preserves each item's full relative path (nested items like
+# .local/share/opencode keep their layout; top-level items are unaffected).
 section "Copying home payload"
 mkdir -p "$STICK/home"
 for item in "${HOME_INCLUDE[@]}"; do
-    if [[ -e $HOME/$item ]]; then
-        info "home/ <- $item"
-        rsync -rlptP "${HOME_EXCLUDES[@]}" "$HOME/$item" "$STICK/home/"
-    else
-        warn "skip (missing): $item"
-    fi
+    [[ -e $HOME/$item ]] && info "home/ <- $item" || warn "skip (missing): $item"
 done
+printf '%s\n' "${HOME_INCLUDE[@]}" \
+    | rsync -rlptP --files-from=- --exclude-from="$HOME_EXCLUDE_FILE" "$HOME/" "$STICK/home/"
 
 # --- 3. secrets -----------------------------------------------------------
 if [[ $DO_SECRETS == 1 ]]; then

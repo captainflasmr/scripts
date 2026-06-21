@@ -40,9 +40,13 @@ fi
 unset _l
 
 # --- curated USB-stick subset (deliberately small; edit by hand) ----------
-# Dotfiles/dirs copied into <stick>/home/ (relative to $HOME).
+# Paths (relative to $HOME) copied into <stick>/home/. refresh-usb.sh feeds
+# these to rsync via --files-from with the shared home-exclude.txt, so nested
+# paths (e.g. .local/share/opencode) keep their layout and the same exclude
+# patterns apply as on the NAS backup.
 HOME_INCLUDE=( .config bin scripts .emacs.d .thunderbird
-               .profile .bashrc .bash_profile .bash_logout .gitconfig .ignore )
+               .profile .bashrc .bash_profile .bash_logout .gitconfig .ignore
+               .claude .claude.json .local/share/opencode )
 # Secrets bundled into the encrypted archive (relative to $HOME).
 SECRET_INCLUDE=( .ssh .gnupg .authinfo .authinfo.gpg )
 # Bulk data dirs copied into <stick>/data/ (relative to $HOME).

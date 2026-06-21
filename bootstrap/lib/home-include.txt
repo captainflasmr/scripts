@@ -9,6 +9,12 @@
 .bash_profile
 .bashrc
 .config
+# Claude Code: app settings + conversation/session transcripts so `claude
+# --resume` works on another machine. Auth + caches dropped in home-exclude.txt.
+.claude
+.claude.json
+# opencode sessions live in .local/share/opencode/opencode.db (covered by
+# .local below); only its caches + auth.json are excluded in home-exclude.txt.
 .davfs2
 .dircolors
 .emacs.d
