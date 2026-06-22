@@ -52,6 +52,7 @@
 .local/share/alire
 .local/share/applications/wine
 .local/share/baloo
+.local/share/containers
 .local/share/fish
 .local/share/flatpak
 .local/share/gnome-boxes
