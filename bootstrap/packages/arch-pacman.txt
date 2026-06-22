@@ -140,6 +140,7 @@ texlive-latexextra
 texlive-plaingeneric
 thunar
 thunderbird
+tigervnc
 tk
 trash-cli
 ttf-droid
