@@ -130,6 +130,7 @@ smbclient
 sof-firmware
 sox
 speedtest-cli
+spice-gtk
 sshfs
 swayr
 syncthing
