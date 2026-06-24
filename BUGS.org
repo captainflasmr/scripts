@@ -9,4 +9,8 @@ This document contains the current bugs/improvements, this is just for me mainly
 
 * Bugs/Improvements
 
-** TODO backup to leverage gitignore
+** TODO clean nas/Home
+
+** TODO Dell to show plugged in indicator
+
+** DOING backup to leverage gitignore

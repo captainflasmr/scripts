@@ -13,6 +13,10 @@ fi
 INC_FILE="$HOME/bin/bootstrap/lib/home-include.txt"
 EXC_FILE="$HOME/bin/bootstrap/lib/home-exclude.txt"
 
+# Remove any temp git-ignore exclude file on exit/abort. Guarded so an early
+# exit before cleanup_git_excludes() is defined doesn't error.
+trap 'command -v cleanup_git_excludes >/dev/null 2>&1 && cleanup_git_excludes' EXIT INT TERM
+
 function list_filters ()
 {
     echo "dryrun   : $DRY"
@@ -224,8 +228,76 @@ function do_input ()
     do_it
 }
 
+# Path to a temp file of git-derived exclude patterns, populated by
+# build_gitignore_excludes() for the current do_it() run and removed by
+# cleanup_git_excludes() (also wired to EXIT).
+GIT_EXCLUDE_FILE=""
+
+function cleanup_git_excludes ()
+{
+    if [[ -n "$GIT_EXCLUDE_FILE" && -f "$GIT_EXCLUDE_FILE" ]]; then
+        rm -f "$GIT_EXCLUDE_FILE"
+    fi
+    GIT_EXCLUDE_FILE=""
+}
+
+# For every git repository found under $1 (bounded depth; heavy junk dirs
+# pruned), ask `git ls-files --ignored --exclude-standard` to list the paths
+# git would ignore there, then emit them as rsync exclude patterns anchored to
+# the transfer root ($1). Honors .gitignore at all levels, .git/info/exclude
+# and core.excludesFile, with correct '!' re-include handling. Safe to run on
+# non-git trees: it simply produces an empty file.
+function build_gitignore_excludes ()
+{
+    local root="$1"
+    cleanup_git_excludes
+    [[ -d "$root" ]] || return 0
+    command -v git >/dev/null 2>&1 || { echo "git not found; skipping .gitignore filtering"; return 0; }
+
+    local tmp
+    tmp=$(mktemp -t do_backup-gitignore.XXXXXX) || return 0
+
+    local gitdir repo entry full rel
+    # Prune node_modules/.cache/__pycache__ so the scan stays fast; prune .git
+    # dirs themselves so find doesn't recurse into their (large) object store.
+    while IFS= read -r -d '' gitdir; do
+        repo=$(dirname "$gitdir")
+        while IFS= read -r -d '' entry; do
+            [[ -z "$entry" ]] && continue
+            full="$repo/$entry"
+            # Strip "$root/" prefix to make the path relative to SRC. Account
+            # for the case where repo == root (no prefix to strip).
+            if [[ "$full" == "$root/"* ]]; then
+                rel=${full#"$root/"}
+            else
+                rel=$full
+            fi
+            # rsync exclude-from entries are patterns; leading '/' anchors to
+            # the transfer root. Trailing '/' (dirs from --directory) is kept.
+            printf '/%s\n' "$rel"
+        done < <(git -C "$repo" ls-files --others --ignored --exclude-standard -z --directory 2>/dev/null)
+    done < <(find "$root" -maxdepth 5 \
+                \( -name node_modules -o -name .cache -o -name __pycache__ \) -prune \
+                -o -type d -name .git -prune -print0 2>/dev/null) >> "$tmp"
+
+    if [[ -s "$tmp" ]]; then
+        GIT_EXCLUDE_FILE="$tmp"
+    else
+        rm -f "$tmp"
+        GIT_EXCLUDE_FILE=""
+    fi
+}
+
 function do_it ()
 {
+    # Enumerate git-ignored paths under SRC by asking git itself (full gitignore
+    # semantics incl. '!' negations, .git/info/exclude, core.excludesFile) and
+    # feed them to rsync as anchored excludes. rsync's own ':-' merge rule is
+    # NOT used because it misreads git's '!' (it means "clear filter list" in
+    # rsync, not re-include) and would silently wipe exclude-everything style
+    # dotfile repos (e.g. ~/.config).
+    build_gitignore_excludes "$SRC"
+
     RSYNC_CMD=(
         rsync -rltsiPv --no-g --copy-links --delete --size-only --modify-window=4 --ignore-missing-args
         --filter='P /lost+found'
@@ -233,6 +305,9 @@ function do_it ()
         --exclude-from="$EXC_FILE"
         "${EXTRA_EXCLUDES[@]}"
     )
+    if [[ -n "$GIT_EXCLUDE_FILE" ]]; then
+        RSYNC_CMD+=(--exclude-from="$GIT_EXCLUDE_FILE")
+    fi
     EXTRA_EXCLUDES=()
 
     if [[ ! -d "$SRC" ]]; then
