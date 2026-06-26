@@ -22,7 +22,6 @@ fd-find
 fish
 flatpak
 gdb
-hugo
 inotify-tools
 jq
 less

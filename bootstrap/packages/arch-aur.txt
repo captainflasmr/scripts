@@ -1,21 +1,17 @@
 # Arch AUR packages (installed via yay/paru). Comment out with #.
 autotiling
-claude-code-acp
 f3
 grpcui
 grpcurl-bin
-kmonad
 lmstudio-bin
 libretro-cap32-git
 makemkv
-openai-codex
 opencode
 omnisharp-roslyn-bin
 pacseek
 photocollage
 python-eyed3
 qt5-styleplugins
-qwen-code
 steghide
 swww
 wl-screenrec
