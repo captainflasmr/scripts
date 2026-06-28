@@ -92,6 +92,9 @@ fi
 RSYNC=( rsync -rlptP --human-readable )
 (( MIRROR )) && RSYNC+=( --delete )
 (( DRYRUN )) && RSYNC+=( -n )
+# overall progress (rsync ≥3.1.0) + end-of-run stats
+RSYNC+=( --stats )
+rsync --version | grep -q 'version 3.[1-9]' && RSYNC+=( --info=progress2 )
 
 if (( FULL )); then
     SCOPE="FULL home (= do_backup set, incl. secrets)"
@@ -111,8 +114,11 @@ confirm "Pull data from the NAS onto this machine?" || die "aborted"
 if [[ $FULL == 1 ]]; then
     section "Pulling FULL home (do_backup set)"
     info "files-from: $HOME_INCLUDE_FILE"
+    start_epoch=$(date +%s)
     "${RSYNC[@]}" --files-from="$HOME_INCLUDE_FILE" --exclude-from="$HOME_EXCLUDE_FILE" \
         "$NAS_HOME/" "$HOME/"
+    elapsed=$(( $(date +%s) - start_epoch ))
+    info "✓ full sync done (${elapsed}s)"
     # secrets came across in the mirror — re-tighten them (rsync preserves perms,
     # but a fresh box / different umask makes this a cheap belt-and-braces).
     if [[ $DRYRUN == 0 ]]; then
@@ -129,8 +135,12 @@ if [[ $DO_DATA == 1 ]]; then
     section "Pulling bulk data"
     for d in "${DATA_DIRS[@]}"; do
         if [[ -d $NAS_HOME/$d ]]; then
-            info "~/$d <- NAS ($(du -sh "$NAS_HOME/$d" 2>/dev/null | cut -f1))"
+            src_size=$(du -sh "$NAS_HOME/$d" 2>/dev/null | cut -f1)
+            info "~/$d <- NAS ($src_size)"
+            start_epoch=$(date +%s)
             "${RSYNC[@]}" "$NAS_HOME/$d/" "$HOME/$d/"
+            elapsed=$(( $(date +%s) - start_epoch ))
+            info "✓ ~/$d done (${elapsed}s)"
         else
             warn "skip (not on NAS): $d"
         fi
@@ -144,6 +154,7 @@ if [[ $DO_HOME == 1 ]]; then
     local_excludes=( "${HOME_EXCLUDES[@]}"
         --exclude '.gnupg/' --exclude '.ssh/'
         --exclude '.authinfo' --exclude '.authinfo.gpg' --exclude '.mbsyncpass*' )
+    home_start=$(date +%s)
     for item in "${HOME_INCLUDE[@]}"; do
         if [[ -e $NAS_HOME/$item ]]; then
             info "~/$item <- NAS"
@@ -152,6 +163,8 @@ if [[ $DO_HOME == 1 ]]; then
             warn "skip (not on NAS): $item"
         fi
     done
+    home_elapsed=$(( $(date +%s) - home_start ))
+    info "✓ curated home done (${home_elapsed}s)"
 fi
 
 section "Sync complete"
