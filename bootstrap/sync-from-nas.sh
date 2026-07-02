@@ -6,15 +6,15 @@
 # up — e.g. a spare laptop you hop onto — with whatever is currently on the NAS,
 # which holds the live mirror of your home under /volume1/Drive/Home.
 #
-#     ~/bin/bootstrap/sync-from-nas.sh            # pull bulk data (DCIM/source/…)
-#     ~/bin/bootstrap/sync-from-nas.sh --home     # also refresh dotfiles/.config
+#     ~/bin/bootstrap/sync-from-nas.sh            # pull bulk data + dotfiles (= --home)
+#     ~/bin/bootstrap/sync-from-nas.sh --no-data  # pull dotfiles only
 #     ~/bin/bootstrap/sync-from-nas.sh --full     # pull the ENTIRE home do_backup pushed
 #     ~/bin/bootstrap/sync-from-nas.sh --dry-run  # show what would change, do nothing
 #
 # --full is the exact pull-counterpart of do_backup: it uses the same shared
 # lists (lib/home-include.txt + lib/home-exclude.txt, see lib/payload.sh) so
 # whatever do_backup mirrors UP to the NAS, this brings back DOWN — a true
-# round-trip. The default (no --full) pulls only the curated bulk-data subset.
+# round-trip. The default pulls bulk data + curated dotfiles (= --home).
 #
 # Reliability: it refuses to run unless the NAS is actually mounted and the
 # Home/ mirror is visible, so a missing/half-up mount aborts the run rather than
@@ -25,8 +25,8 @@
 #
 # Flags:
 #   --full       pull the entire do_backup home set (home-include.txt), secrets too
-#   --home       also pull curated dotfiles + bin + .config (ignored with --full)
-#   --no-data    skip the bulk data dirs (use with --home for dotfiles only)
+#   --no-home    skip curated dotfiles + bin + .config (default is --home)
+#   --no-data    skip the bulk data dirs
 #   --mirror     delete local-only files so the target exactly mirrors the NAS
 #   --dry-run    rsync -n: report changes without writing anything
 #   --yes, -y    assume "yes" to the confirmation prompt
@@ -44,11 +44,11 @@ REMOTE_PATH="/volume1/Drive"
 TARGET_IPS=("192.168.0.10" "192.168.0.11" "192.168.7.103")
 
 # --- args -----------------------------------------------------------------
-DO_DATA=1; DO_HOME=0; FULL=0; MIRROR=0; DRYRUN=0; ASSUME_YES=0
+DO_DATA=1; DO_HOME=1; FULL=0; MIRROR=0; DRYRUN=0; ASSUME_YES=0
 for a in "$@"; do
     case "$a" in
         --full)     FULL=1 ;;
-        --home)     DO_HOME=1 ;;
+        --no-home)  DO_HOME=0 ;;
         --no-data)  DO_DATA=0 ;;
         --mirror)   MIRROR=1 ;;
         --dry-run|-n) DRYRUN=1 ;;
@@ -58,7 +58,7 @@ for a in "$@"; do
     esac
 done
 export ASSUME_YES
-[[ $FULL == 0 && $DO_DATA == 0 && $DO_HOME == 0 ]] && die "nothing to do: --no-data without --home"
+[[ $FULL == 0 && $DO_DATA == 0 && $DO_HOME == 0 ]] && die "nothing to do: --no-data --no-home leaves nothing to sync"
 
 require_cmd rsync "Install rsync first."
 
@@ -89,17 +89,14 @@ fi
 [[ -n $(ls -A "$NAS_HOME" 2>/dev/null) ]] || die "$NAS_HOME is empty — refusing to sync (mount looks wrong)."
 
 # --- assemble rsync flags -------------------------------------------------
-RSYNC=( rsync -rlptP --human-readable )
+RSYNC=( rsync -rlptv --human-readable )
 (( MIRROR )) && RSYNC+=( --delete )
 (( DRYRUN )) && RSYNC+=( -n )
-# overall progress (rsync ≥3.1.0) + end-of-run stats
-RSYNC+=( --stats )
-rsync --version | grep -q 'version 3.[1-9]' && RSYNC+=( --info=progress2 )
 
 if (( FULL )); then
     SCOPE="FULL home (= do_backup set, incl. secrets)"
 else
-    SCOPE="curated data"; (( DO_HOME )) && SCOPE+=" + dotfiles"
+    SCOPE=""; (( DO_DATA )) && SCOPE+="data "; (( DO_HOME )) && SCOPE+="dotfiles"; SCOPE="${SCOPE% }"
 fi
 section "Sync FROM NAS"
 info "source : $NAS_HOME/"

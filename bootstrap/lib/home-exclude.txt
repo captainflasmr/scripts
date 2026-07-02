@@ -32,12 +32,10 @@
 .config/Antigravity
 .config/Code/User/workspaceStorage
 .config/Code/logs
-.config/.git
 .config/chromium
 .config/gnome-boxes
 .config/icedrive
 .config/libvirt
-.emacs.d/.git
 .emacs.d/eca
 .emacs.d/eln-cache
 .emacs.d/elpa

@@ -12,6 +12,13 @@ fi
 # repo (also drives refresh-usb.sh and sync-from-nas.sh). See lib/payload.sh.
 INC_FILE="$HOME/bin/bootstrap/lib/home-include.txt"
 EXC_FILE="$HOME/bin/bootstrap/lib/home-exclude.txt"
+# rsync --include patterns for paths that are git-ignored (by nested .gitignore)
+# but should still be backed up. Inserted before --exclude-from=GIT_EXCLUDE_FILE
+# so rsync's "first match wins" semantics include them before the git-ignore
+# exclusions. Patterns anchored to transfer root (leading '/').
+GIT_INCLUDE_OVERRIDES=(
+    '/.emacs.d/offline-packages/local-packages/**'
+)
 
 # Remove any temp git-ignore exclude file on exit/abort. Guarded so an early
 # exit before cleanup_git_excludes() is defined doesn't error.
@@ -300,12 +307,17 @@ function do_it ()
     build_gitignore_excludes "$SRC"
 
     RSYNC_CMD=(
-        rsync -rltsiPv --no-g --copy-links --delete --size-only --modify-window=4 --ignore-missing-args
+        rsync -rltsiPv --no-g --copy-links --delete --modify-window=4 --ignore-missing-args
         --filter='P /lost+found'
         --exclude '.Trash*' --exclude '#recycle*' --exclude '_recycle*'
         --exclude-from="$EXC_FILE"
         "${EXTRA_EXCLUDES[@]}"
     )
+    # Git-ignore overrides must come BEFORE --exclude-from=GIT_EXCLUDE_FILE
+    # so they match first (rsync: first matching rule wins).
+    for pat in "${GIT_INCLUDE_OVERRIDES[@]}"; do
+        RSYNC_CMD+=("--include=$pat")
+    done
     if [[ -n "$GIT_EXCLUDE_FILE" ]]; then
         RSYNC_CMD+=(--exclude-from="$GIT_EXCLUDE_FILE")
     fi
