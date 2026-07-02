@@ -277,7 +277,8 @@ function build_gitignore_excludes ()
             printf '/%s\n' "$rel"
         done < <(git -C "$repo" ls-files --others --ignored --exclude-standard -z --directory 2>/dev/null)
     done < <(find "$root" -maxdepth 5 \
-                \( -name node_modules -o -name .cache -o -name __pycache__ \) -prune \
+                \( -name node_modules -o -name .cache -o -name __pycache__ \
+                   -o -name offline-packages \) -prune \
                 -o -type d -name .git -prune -print0 2>/dev/null) >> "$tmp"
 
     if [[ -s "$tmp" ]]; then
