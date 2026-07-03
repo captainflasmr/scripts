@@ -6,6 +6,7 @@ grpcurl-bin
 lmstudio-bin
 libretro-cap32-git
 makemkv
+mu
 opencode
 omnisharp-roslyn-bin
 pacseek
