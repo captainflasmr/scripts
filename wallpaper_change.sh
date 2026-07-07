@@ -12,7 +12,21 @@ cp -f $wallpaper_path ~/.last_wallpaper.jpg
 
 if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
     pkill swaybg
-    swaybg -i "$wallpaper_path" -m fill &
+    # --- scaling mode variants (uncomment one) ---
+    # Fill entire output, cropping to maintain aspect ratio
+    # swaybg -i "$wallpaper_path" -m fill &
+    # Scale to fit while maintaining aspect ratio, may leave bars
+    # swaybg -i "$wallpaper_path" -m fit &
+    # Stretch without preserving aspect ratio (may distort)
+    swaybg -i "$wallpaper_path" -m stretch &
+    # Place unscaled at the center
+    # swaybg -i "$wallpaper_path" -m center &
+    # Tile the image
+    # swaybg -i "$wallpaper_path" -m tile &
+    # Use solid color (ignores image, needs -c)
+    # swaybg -c "#1e1e2e" -m solid_color &
+    # --- per-output usage (target a specific monitor, e.g. eDP-1) ---
+    # swaybg -o eDP-1 -i "$wallpaper_path" -m fill &
 fi
 
 # lets run pywal for colour scheme generation.
