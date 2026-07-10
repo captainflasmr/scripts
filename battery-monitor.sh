@@ -10,9 +10,11 @@ echo "|----+-----------------------+----|" >> "$LOG_FILE"
 
 counter=0
 
+BATTERY=$(upower -e | grep battery | head -1)
+
 while true; do
    # Get battery percentage
-   PERCENTAGE=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 \
+   PERCENTAGE=$(upower -i "$BATTERY" \
             | grep percentage \
             | awk '{print $2}' \
             | tr -d '%')
