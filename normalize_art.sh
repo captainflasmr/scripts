@@ -10,7 +10,7 @@ REFERENCE_IMAGE="" # Optional: e.g., "./reference.png"
 
 # Print Adjustment: 1.0 is neutral. 
 # 1.08 to 1.12 is the sweet spot for correcting the screen-to-print darkness gap.
-PRINT_LIGHTNESS_BUMP="1.10" 
+PRINT_LIGHTNESS_BUMP="1.20" 
 
 # Check if tools are installed
 if ! command -v magick &> /dev/null || ! command -v gmic &> /dev/null; then
