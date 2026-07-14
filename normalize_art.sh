@@ -6,8 +6,11 @@ set -e
 # Configuration
 INPUT_DIR="./input_art"
 OUTPUT_DIR="./normalized_art"
-# Optional: Set a path to a "style" reference image for palette matching
-REFERENCE_IMAGE="" # e.g., "./reference.png"
+REFERENCE_IMAGE="" # Optional: e.g., "./reference.png"
+
+# Print Adjustment: 1.0 is neutral. 
+# 1.08 to 1.12 is the sweet spot for correcting the screen-to-print darkness gap.
+PRINT_LIGHTNESS_BUMP="1.10" 
 
 # Check if tools are installed
 if ! command -v magick &> /dev/null || ! command -v gmic &> /dev/null; then
@@ -31,24 +34,29 @@ for img in "$INPUT_DIR"/*.{png,jpg,jpeg,tiff,PNG,JPG,JPEG,TIFF}; do
     echo "Processing: $filename"
 
     if [ -n "$REFERENCE_IMAGE" ] && [ -f "$REFERENCE_IMAGE" ]; then
-        echo "-> Applying Color Palette Matching using G'MIC..."
-        # 1. Match the color palette of the reference image
-        # 2. Sharpen and enhance local details
+        echo "-> Applying Color Palette Matching & Print Lightness..."
+        # 1. Match the palette of the reference image
+        # 2. Boost artistic colors
+        # 3. Output to a temp file, then use ImageMagick to apply the precise print gamma correction
         gmic "$img" "$REFERENCE_IMAGE" \
              -transfer_colors[0] [1],1 \
              -remove[1] \
              -fx_enhance_color 1.1,0,0,0,0,0,0,0,0,0,0 \
              -output "$target_out"
+             
+        # Apply the lightness/gamma bump to the G'MIC output
+        magick "$target_out" -gamma "$PRINT_LIGHTNESS_BUMP" "$target_out"
     else
-        echo "-> Applying Standard Digital Art Enhancements..."
-        # No reference image? Use a safe, high-pop ImageMagick pipeline:
-        # -colorspace sRGB: Ensures consistent profile
-        # -level 1%,99%: Clips noisy extremes while maximizing contrast
-        # -modulate 100,112,100: Boosts saturation by 12% without altering hue
-        # -sharpen: Crisp up details for digital display
+        echo "-> Applying Standard Enhancements & Print Lightness..."
+        # Integrated ImageMagick pipeline:
+        # -level 1%,99%: Maximum clean contrast
+        # -gamma: Safely raises midtones for printing without clipping highlights
+        # -modulate: Boosts saturation slightly to prevent a washed-out print
+        # -sharpen: Keeps edges crisp through the printing ink-absorption process
         magick "$img" \
             -colorspace sRGB \
             -level 1%,99% \
+            -gamma "$PRINT_LIGHTNESS_BUMP" \
             -modulate 100,112,100 \
             -sharpen 0x0.8 \
             "$target_out"
