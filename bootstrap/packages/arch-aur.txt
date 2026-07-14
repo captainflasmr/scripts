@@ -7,8 +7,10 @@ lmstudio-bin
 libretro-cap32-git
 makemkv
 mu
+numix-icon-theme-git
 opencode
 omnisharp-roslyn-bin
+papirus-folders
 pacseek
 photocollage
 python-eyed3
