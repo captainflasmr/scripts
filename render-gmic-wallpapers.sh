@@ -56,8 +56,8 @@ render_wallpaper() {
     # - 1   : Alpha (noise/texture scale factor).
     # - 4   : Sigma (spatial scale factor for pixel evaluation).
     # gmic -v 0 "$output_temp" \
-        #     smooth 30,0.1,0.8,1,4 \
-        #     output "$output_temp",94
+        # smooth 300,0.2,0.8,1,4 \
+        # output "$output_temp",94
     
     # -------------------------------------------------------------------------
     # 4. POLYGONIZE (Native geometric mesh stylization)
@@ -80,8 +80,8 @@ render_wallpaper() {
     # - 1 : Keep original pixel scale values (1 = Yes, 0 = Index indices).
     # - 0 : Quantization type (0 = K-Means, which groups natural image palettes beautifully).
     # gmic -v 0 "$output_temp" \
-        #     quantize 8,1,0 \
-        #     output "$output_temp",94
+        # quantize 4,1,0 \
+        # output "$output_temp",94
 
     # -------------------------------------------------------------------------
     # 6. CARTOON (Native black outlines + flat color quantization)
@@ -94,8 +94,8 @@ render_wallpaper() {
     # - 1.5 : Color intensity/doping modifier.
     # - 6   : Quantization levels (number of flat color shades to compress the image into).
     gmic -v 0 "$output_temp" \
-         cartoon 5,150,20,0,1.5,6 \
-         output "$output_temp",94
+        cartoon 5,150,20,0,1.5,6 \
+        output "$output_temp",94
 
     # -------------------------------------------------------------------------
     # 1. TEXTURED GLASS (Wrapper command)
@@ -108,8 +108,8 @@ render_wallpaper() {
     # - 10         : Smoothness (how soft/blended the transitions are inside the tiles).
     # - 4          : Glass pattern type (1-4). 4 creates nice organic-looking plates.
     # gmic -v 0 "$output_temp" \
-         # fx_textured_glass 400,400,5,3,0.5,10,4 \
-         # output "$output_temp",94
+        # fx_textured_glass 400,400,5,3,0.5,10,4 \
+        # output "$output_temp",94
     
     mv -- "$output_temp" "$output"
     printf 'Rendered: %s\n' "$output"
