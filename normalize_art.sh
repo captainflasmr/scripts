@@ -21,17 +21,19 @@ fi
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
-echo "Processing images from '$INPUT_DIR'..."
-
-for img in "$INPUT_DIR"/*.{png,jpg,jpeg,tiff,PNG,JPG,JPEG,TIFF}; do
-    # Skip if no matching files
-    [ -f "$img" ] || continue
+# Process images recursively
+find "$INPUT_DIR" -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.tiff" \) -print0 | while IFS= read -r -d '' img; do
+    # Calculate relative path and target output path
+    rel_path="${img#$INPUT_DIR/}"
+    target_out="$OUTPUT_DIR/$rel_path"
+    
+    # Ensure target subdirectory exists
+    mkdir -p "$(dirname "$target_out")"
     
     filename=$(basename "$img")
-    target_out="$OUTPUT_DIR/$filename"
     
     echo "----------------------------------------"
-    echo "Processing: $filename"
+    echo "Processing: $rel_path"
 
     if [ -n "$REFERENCE_IMAGE" ] && [ -f "$REFERENCE_IMAGE" ]; then
         echo "-> Applying Color Palette Matching & Print Lightness..."
