@@ -83,11 +83,12 @@ find "$INPUT_DIR" -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg"
         magick "$target_out" -gamma "$PRINT_LIGHTNESS_BUMP" "$target_out"
 
         # Inject professional metadata using exiftool
-        exiftool -overwrite_now \
+        exiftool \
             -Artist="$ARTIST_NAME" \
             -Copyright="$COPYRIGHT_NOTICE" \
             -CopyrightNotice="$COPYRIGHT_NOTICE" \
             -Comment="Purchased from $SHOP_URL" \
+            -overwrite_original \
             "$target_out"
     else
         echo "  [Print] Applying ImageMagick Enhancements..."
@@ -100,11 +101,12 @@ find "$INPUT_DIR" -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg"
             "$target_out"
 
         # Inject professional metadata using exiftool
-        exiftool -overwrite_now \
+        exiftool \
             -Artist="$ARTIST_NAME" \
             -Copyright="$COPYRIGHT_NOTICE" \
             -CopyrightNotice="$COPYRIGHT_NOTICE" \
             -Comment="Purchased from $SHOP_URL" \
+            -overwrite_original \
             "$target_out"
     fi
     echo "  ✓ Saved Print File: $target_out"
