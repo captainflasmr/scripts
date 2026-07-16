@@ -1,18 +1,44 @@
 #!/bin/bash
 LOG_FILE="$HOME/battery_log.org"
 
-trash-put "$LOG_FILE"
-
-echo "#+NAME: battery-table" > "$LOG_FILE"
-echo "#+PLOT: title:\"Battery\" ind:1 deps:(3) type:2d with:lines set:\"yrange [0:100]\"" >> "$LOG_FILE"
-echo "|    | date                  | %  |" >> "$LOG_FILE"
-echo "|----+-----------------------+----|" >> "$LOG_FILE"
-
-counter=0
-
 BATTERY=$(upower -e | grep battery | head -1)
 
+# Determine the last logged day to resume correctly
+last_day=""
+if [[ -f "$LOG_FILE" ]]; then
+    last_day=$(tail -1 "$LOG_FILE" | grep -oP '\d{4}-\d{2}-\d{2}' | tail -1)
+fi
+
+current_day=$(date '+%Y-%m-%d')
+
+# Start a new table if file is missing or day has changed
+if [[ ! -f "$LOG_FILE" ]] || [[ "$current_day" != "$last_day" ]]; then
+    echo "" >> "$LOG_FILE"
+    echo "#+NAME: battery-table-$current_day" >> "$LOG_FILE"
+    echo "#+PLOT: title:\"Battery $current_day\" ind:1 deps:(3) type:2d with:lines set:\"yrange [0:100]\"" >> "$LOG_FILE"
+    echo "|    | date                  | %  |" >> "$LOG_FILE"
+    echo "|----+-----------------------+----|" >> "$LOG_FILE"
+fi
+
+# Determine starting counter from last row of current day's table
+counter=$(tail -1 "$LOG_FILE" | grep -oP '^\|\s*\K\d+' | head -1)
+counter=${counter:--1}
+counter=$((counter + 1))
+
 while true; do
+   current_day=$(date '+%Y-%m-%d')
+
+   # Check if day changed mid-loop
+   last_day=$(tail -1 "$LOG_FILE" | grep -oP '\d{4}-\d{2}-\d{2}' | tail -1)
+   if [[ "$current_day" != "$last_day" ]]; then
+       echo "" >> "$LOG_FILE"
+       echo "#+NAME: battery-table-$current_day" >> "$LOG_FILE"
+       echo "#+PLOT: title:\"Battery $current_day\" ind:1 deps:(3) type:2d with:lines set:\"yrange [0:100]\"" >> "$LOG_FILE"
+       echo "|    | date                  | %  |" >> "$LOG_FILE"
+       echo "|----+-----------------------+----|" >> "$LOG_FILE"
+       counter=0
+   fi
+
    # Get battery percentage
    PERCENTAGE=$(upower -i "$BATTERY" \
             | grep percentage \
