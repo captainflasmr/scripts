@@ -10,7 +10,7 @@ REFERENCE_IMAGE="" # Optional: e.g., "./reference.png"
 
 # Print Adjustment: 1.0 is neutral. 
 # 1.08 to 1.12 is the sweet spot for correcting the screen-to-print darkness gap.
-PRINT_LIGHTNESS_BUMP="1.20" 
+PRINT_LIGHTNESS_BUMP="1.40" 
 
 # Check if tools are installed
 if ! command -v magick &> /dev/null || ! command -v gmic &> /dev/null; then
@@ -57,7 +57,7 @@ for img in "$INPUT_DIR"/*.{png,jpg,jpeg,tiff,PNG,JPG,JPEG,TIFF}; do
             -colorspace sRGB \
             -level 1%,99% \
             -gamma "$PRINT_LIGHTNESS_BUMP" \
-            -modulate 100,112,100 \
+            -modulate 100,130,100 \
             -sharpen 0x0.8 \
             "$target_out"
     fi
