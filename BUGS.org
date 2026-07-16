@@ -9,6 +9,6 @@ This document contains the current bugs/improvements, this is just for me mainly
 
 * Bugs/Improvements
 
-** TODO generate some wallpapers through gimp plugin
+** DOING generate some wallpapers through gimp plugin
 
 ** DOING battery_log always showing 0% on Dell
