@@ -16,11 +16,13 @@ PRINT_LIGHTNESS_BUMP="1.10"
 
 # Store Preview Config
 PREVIEW_WIDTH="1200"
-WATERMARK_TEXT="© 2026 James Dyer"
-# Subtle color with transparency (RGBA)
-WATERMARK_COLOR="rgba(255,255,255,0.35)" 
-# A dark shadow behind white text for visibility on all backgrounds
-WATERMARK_SHADOW_COLOR="rgba(0,0,0,0.25)"
+WATERMARK_TEXT="© 2026 James Dyer | Shop Preview"
+# Using hex for better compatibility (#RRGGBBAA)
+# White with ~60% opacity
+WATERMARK_COLOR="#FFFFFF99" 
+# Black with ~40% opacity
+WATERMARK_SHADOW_COLOR="#00000066"
+
 
 # Metadata Details
 ARTIST_NAME="James Dyer"
@@ -114,10 +116,10 @@ find "$INPUT_DIR" -type f \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg"
     # Resize the print-ready image, then draw a clean shadow-backed watermark
     magick "$target_out" \
         -resize "${PREVIEW_WIDTH}x" \
-        -gravity South \
-        -pointsize 20 \
-        -fill "$WATERMARK_SHADOW_COLOR" -annotate +2+32 "$WATERMARK_TEXT" \
-        -fill "$WATERMARK_COLOR"        -annotate +0+30 "$WATERMARK_TEXT" \
+        -gravity Center \
+        -pointsize 60 \
+        -fill "$WATERMARK_SHADOW_COLOR" -annotate +2+2 "$WATERMARK_TEXT" \
+        -fill "$WATERMARK_COLOR"        -annotate +0+0 "$WATERMARK_TEXT" \
         -quality 82 \
         "$target_preview"
         
