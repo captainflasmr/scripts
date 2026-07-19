@@ -17,7 +17,7 @@ voltage_now=$(cat "$BAT_PATH/voltage_now")
 status=$(cat "$BAT_PATH/status")
 capacity=$(cat "$BAT_PATH/capacity")
 capacity_level=$(cat "$BAT_PATH/capacity_level")
-temp=$(cat "$BAT_PATH/temp")
+temp=$(cat "$BAT_PATH/temp" 2>/dev/null || echo "N/A")
 cycle_count=$(cat "$BAT_PATH/cycle_count" 2>/dev/null || echo "N/A")
 health=$(cat "$BAT_PATH/health" 2>/dev/null || echo "Unknown")
 model_name=$(cat "$BAT_PATH/model_name" 2>/dev/null || echo "Unknown")
@@ -36,8 +36,13 @@ energy_full_mwh=$(( charge_full * voltage_now / 1000000000 ))
 energy_full_design_mwh=$(( charge_full_design * voltage_now / 1000000000 ))
 energy_now_mwh=$(( charge_now * voltage_now / 1000000000 ))
 
-temp_c=$(( temp / 10 ))
-temp_c_dec=$(( temp % 10 ))
+if [ "$temp" != "N/A" ]; then
+    temp_c=$(( temp / 10 ))
+    temp_c_dec=$(( temp % 10 ))
+    temp_display="${temp_c}.${temp_c_dec}°C"
+else
+    temp_display="N/A"
+fi
 
 # ---- power / time estimates ----
 power_mw=0
@@ -64,7 +69,7 @@ fmt "  Model:       $manufacturer $model_name"
 fmt "  Status:      $status ($capacity%)"
 fmt "  Capacity:    $capacity_level"
 fmt "  Health:      $health"
-fmt "  Temperature: ${temp_c}.${temp_c_dec}°C"
+fmt "  Temperature: $temp_display"
 if [ "$cycle_count" != "N/A" ]; then
     fmt "  Cycles:      $cycle_count"
 fi
