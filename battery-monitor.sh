@@ -6,7 +6,7 @@ BATTERY=$(upower -e | grep battery | head -1)
 # Determine the last logged day to resume correctly
 last_day=""
 if [[ -f "$LOG_FILE" ]]; then
-    last_day=$(tail -1 "$LOG_FILE" | grep -oP '\d{4}-\d{2}-\d{2}' | tail -1)
+    last_day=$(grep -oP '#\+NAME: battery-table-\K\d{4}-\d{2}-\d{2}' "$LOG_FILE" | tail -1)
 fi
 
 current_day=$(date '+%Y-%m-%d')
@@ -29,7 +29,7 @@ while true; do
    current_day=$(date '+%Y-%m-%d')
 
    # Check if day changed mid-loop
-   last_day=$(tail -1 "$LOG_FILE" | grep -oP '\d{4}-\d{2}-\d{2}' | tail -1)
+   last_day=$(grep -oP '#\+NAME: battery-table-\K\d{4}-\d{2}-\d{2}' "$LOG_FILE" | tail -1)
    if [[ "$current_day" != "$last_day" ]]; then
        echo "" >> "$LOG_FILE"
        echo "#+NAME: battery-table-$current_day" >> "$LOG_FILE"
