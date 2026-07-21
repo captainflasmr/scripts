@@ -57,12 +57,12 @@ remove() {
   echo "Done."
 }
 
-case "${1:-status}" in
+case "${1:-apply}" in
   status) status ;;
   apply)  apply ;;
   remove) remove ;;
   *)
-    echo "Usage: $(basename "$0") {status|apply|remove}" >&2
+    echo "Usage: $(basename "$0") {apply|status|remove}" >&2
     exit 1
     ;;
 esac
