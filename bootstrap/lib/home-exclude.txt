@@ -96,7 +96,8 @@ __pycache__
 public
 public_html
 publish/obp-output
-qBittorrent
+qBittorrent/lockfile
+qBittorrent/ipc-socket
 source/repos/melpa
 syncthing
 source/repos/linux-*

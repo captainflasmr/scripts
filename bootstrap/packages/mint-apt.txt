@@ -67,7 +67,7 @@ wmctrl
 # --- desktop apps ---
 audacity
 digikam
-deluge
+qbittorrent
 easytag
 gimp
 gimp-gmic

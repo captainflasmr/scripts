@@ -19,7 +19,7 @@ cpupower
 croc
 cronie
 cups
-deluge-gtk
+qbittorrent
 devede
 digikam
 docker
