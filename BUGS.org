@@ -9,6 +9,4 @@ This document contains the current bugs/improvements, this is just for me mainly
 
 * Bugs/Improvements
 
-** DOING duplicate battery log table
-
 ** DOING generate some wallpapers through gimp plugin
