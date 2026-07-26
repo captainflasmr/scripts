@@ -17,6 +17,8 @@ EXC_FILE="$HOME/bin/bootstrap/lib/home-exclude.txt"
 # so rsync's "first match wins" semantics include them before the git-ignore
 # exclusions. Patterns anchored to transfer root (leading '/').
 GIT_INCLUDE_OVERRIDES=(
+    '/.config/JetBrains/'
+    '/.config/JetBrains/IntelliJIdea2026.1/**'
     '/.emacs.d/offline-packages/local-packages/**'
 )
 
