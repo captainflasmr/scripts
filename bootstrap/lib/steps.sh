@@ -77,6 +77,80 @@ step_groups() {
     done
 }
 
+# --- GitHub CLI (gh) + git credential helper ------------------------------
+# Ensures `gh` is installed and wires git to use it as the HTTPS credential
+# helper for github.com (gh auth setup-git). Without this, `git push` from
+# inside Emacs (or any headless shell) falls back to credential.helper=store
+# + an askpass prompt that can't open without a TTY — i.e. exactly the auth
+# failure that prompted this step. The OAuth token gh/git use lives at
+# ~/.config/gh/hosts.yml; it rides in the unencrypted home payload (under
+# .config, in payload.sh HOME_INCLUDE) and is restored by step_restore_home,
+# so a fresh box can push without an interactive login — provided the token
+# is still valid (gh auth status checks; if expired, one 'gh auth login'
+# fixes it).
+#   • Arch: gh is in arch-pacman.txt; this step just runs setup-git.
+#   • Mint: gh has no stock apt package — the github-cli apt repo + signing
+#     key need enabling (a .txt list can't do that), which is what the
+#     commented-out gh line in mint-apt.txt was deferring to here.
+step_gh_setup() {
+    section "GitHub CLI (gh) + git credential helper"
+
+    # Mint: enable github's own apt repo (signing key + sources.list), then install.
+    if [[ $DISTRO == mint ]] && ! command -v gh &>/dev/null; then
+        if ! command -v curl &>/dev/null; then
+            info "installing curl (needed to fetch the github-cli signing key)"
+            "${APT[@]}" install -y curl || { warn "could not install curl — skipping gh setup"; return 0; }
+        fi
+        local keyring=/usr/share/keyrings/githubcli-archive-keyring.gpg
+        local list=/etc/apt/sources.list.d/github-cli.list
+        local need_update=0
+        if [[ ! -f $keyring ]]; then
+            info "fetching github-cli signing key"
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+                | sudo dd of="$keyring" status=none \
+                && sudo chmod go+r "$keyring" \
+                || { warn "could not fetch github-cli key — skipping gh setup"; return 0; }
+            need_update=1
+        else
+            info "github-cli keyring already present: $keyring"
+        fi
+        if [[ ! -f $list ]] || ! grep -q 'cli.github.com/packages' "$list"; then
+            echo "deb [arch=amd64 signed-by=$keyring] https://cli.github.com/packages stable main" \
+                | sudo tee "$list" >/dev/null
+            info "enabled github-cli apt repo: $list"
+            need_update=1
+        else
+            info "github-cli apt repo already enabled: $list"
+        fi
+        (( need_update )) && { info "apt update (for github-cli repo)"; "${APT[@]}" update || warn "apt update had errors"; }
+        info "apt: gh"
+        "${APT[@]}" install -y gh || { warn "could not install gh — git push to GitHub will need manual 'gh auth login'"; return 0; }
+    fi
+
+    # Arch: gh already installed via arch-pacman.txt — nothing to install here.
+
+    if ! command -v gh &>/dev/null; then
+        warn "gh not installed — 'git push' to GitHub from Emacs will need manual 'gh auth login'"
+        return 0
+    fi
+
+    # Wire git to use gh as its HTTPS credential helper for github.com.
+    # Idempotent — just ensures the helper line is present in ~/.gitconfig.
+    info "gh auth setup-git (git -> gh credential helper)"
+    gh auth setup-git 2>/dev/null || warn "gh auth setup-git failed"
+
+    # If the restored token (from ~/.config/gh/hosts.yml) is still valid we're
+    # done; if it's missing/expired the user just logs in once on this box.
+    if gh auth status &>/dev/null; then
+        info "gh authenticated — 'git push' to GitHub ready"
+    else
+        warn "gh not authenticated — run 'gh auth login' to enable git push to GitHub"
+    fi
+
+    # Belt-and-braces: lock down the restored token (it's a credential).
+    [[ -f $HOME/.config/gh/hosts.yml ]] && chmod 600 "$HOME/.config/gh/hosts.yml"
+}
+
 # --- cron + NAS auto-mount on reboot --------------------------------------
 # Optional: only useful on machines that live on your LAN with the NAS.
 step_cron_nasmount() {
@@ -386,6 +460,7 @@ Install finished. Worth checking / doing manually:
   • Reboot if shell, groups, or the GRUB backlight fix changed.
   • ~/.emacs.d and ~/.config are restored as git repos — 'git status' in each to confirm.
   • Verify ssh: ssh -T git@github.com
+  • Verify gh/git push: gh auth status  (then 'gh auth login' if not authenticated)
   • syncthing folders (~/DCIM, ~/Snapseed).
   • Email: ensure .mbsyncpass-{james,jimbob,captainflasmr} are in the secrets archive.
   • Run 'mbsync -a' to fetch new mail, then 'mu index' to update the search index.

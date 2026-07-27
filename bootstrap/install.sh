@@ -93,6 +93,7 @@ step_restore_home
 [[ $DO_DATA    == 1 ]] && step_restore_data
 step_set_shell
 step_groups
+step_gh_setup
 if confirm "Set up reboot NAS auto-mount cron (only useful on your LAN)?"; then
     step_cron_nasmount
 fi
