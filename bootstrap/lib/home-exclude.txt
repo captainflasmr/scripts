@@ -36,6 +36,19 @@
 .config/gnome-boxes
 .config/icedrive
 .config/libvirt
+# Firefox profile (re-included by GIT_INCLUDE_OVERRIDES in do_backup). Keep
+# settings/logins/bookmarks/extensions; drop crash dumps, telemetry and locks.
+# Web cache lives in ~/.cache/mozilla (already excluded by .cache* above).
+# App-level (directly under ~/.config/mozilla/firefox/):
+.config/mozilla/firefox/Crash Reports
+.config/mozilla/firefox/Pending Pings
+# Per-profile (under ~/.config/mozilla/firefox/<profile>/):
+.config/mozilla/firefox/*/crashes
+.config/mozilla/firefox/*/minidumps
+.config/mozilla/firefox/*/saved-telemetry-pings
+.config/mozilla/firefox/*/datareporting
+.config/mozilla/firefox/*/lock
+.config/mozilla/firefox/*/.parentlock
 .emacs.d/eca
 .emacs.d/eln-cache
 .emacs.d/elpa

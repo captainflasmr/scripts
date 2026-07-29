@@ -19,7 +19,32 @@ EXC_FILE="$HOME/bin/bootstrap/lib/home-exclude.txt"
 GIT_INCLUDE_OVERRIDES=(
     '/.config/JetBrains/'
     '/.config/JetBrains/IntelliJIdea2026.1/**'
+    # Firefox profile (modern XDG layout under ~/.config/mozilla/). Kept out of
+    # the ~/.config git repo (large, holds secrets + caches); backed up via
+    # override. Crash/telemetry junk pruned in home-exclude.txt.
+    '/.config/mozilla/'
+    '/.config/mozilla/**'
     '/.emacs.d/offline-packages/local-packages/**'
+    # ~/.config is a git dotfiles repo whose .gitignore is '*' then '!dir/'.
+    # '!dir/' re-includes the directory entry but NOT its contents, so when the
+    # contents are untracked, 'git ls-files --ignored --directory' (run by
+    # build_gitignore_excludes) lists the dir as ignored and rsync drops it.
+    # These overrides re-include such dirs before --exclude-from=GIT_EXCLUDE_FILE
+    # (rsync: first matching rule wins). home-exclude.txt still prunes junk inside.
+    '/.config/alacritty/'
+    '/.config/alacritty/**'
+    '/.config/emacs/'
+    '/.config/emacs/**'
+    '/.config/darktable/'
+    '/.config/darktable/**'
+    '/.config/fish/'
+    '/.config/fish/**'
+    '/.config/environment.d/'
+    '/.config/environment.d/**'
+    '/.config/waybar/'
+    '/.config/waybar/**'
+    # sway/ itself is tracked, but this single config file is git-ignored.
+    '/.config/sway/config.d/power_save'
 )
 
 # Remove any temp git-ignore exclude file on exit/abort. Guarded so an early
