@@ -33,6 +33,7 @@ eza
 emacs-wayland
 fastfetch
 fd
+figlet
 firefox
 fish
 flatpak
