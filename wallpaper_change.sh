@@ -1,6 +1,6 @@
 #!/bin/bash
 
-wallpaper_path="$(find ~/wallpaper -type f | shuf -n 1)"
+wallpaper_path="$(find ~/wallpaper/wallpaper-gmic-textured-glass-hd -type f | shuf -n 1)"
 
 # Save current wallpaper as previous before overwriting
 if [ -f ~/.last_wallpaper_path ]; then
@@ -9,6 +9,7 @@ fi
 
 echo $wallpaper_path > ~/.last_wallpaper_path
 cp -f $wallpaper_path ~/.last_wallpaper.jpg
+chmod 644 ~/.last_wallpaper.jpg
 
 if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
     pkill swaybg
