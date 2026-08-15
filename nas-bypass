@@ -12,6 +12,10 @@
 # which honours specific routes over the tunnel's default route, so this
 # reliably wins.
 #
+# NOTE: the NAS now lives ON the Atria mesh subnet (192.168.7.x, same as
+# this machine), so the old 192.168.0.0/24 bypass is no longer needed.
+# Run 'nas-bypass remove' once to drop the stale route from the profile.
+#
 # Usage:
 #   nas-bypass status     # show current routing to the NAS (default)
 #   nas-bypass apply       # add a persistent route to the NM Wi-Fi profile
@@ -22,9 +26,9 @@
 set -euo pipefail
 
 CONN="${NAS_BYPASS_CONN:-STRONG_ATRIA_F6NF}"   # NetworkManager connection name
-SUBNET="${NAS_BYPASS_SUBNET:-192.168.0.0/24}"  # NAS subnet
+SUBNET="${NAS_BYPASS_SUBNET:-192.168.0.0/24}"  # old NAS subnet (route to remove)
 GATEWAY="${NAS_BYPASS_GATEWAY:-192.168.7.254}"  # local router
-NAS_IP="${NAS_BYPASS_NAS_IP:-192.168.0.10}"     # a host to test the path to
+NAS_IP="${NAS_BYPASS_NAS_IP:-192.168.7.101}"    # NAS, now on the mesh subnet
 
 ROUTE="$SUBNET $GATEWAY"
 

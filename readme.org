@@ -40,7 +40,7 @@ Below is a brief description of each script and its functionality.
 - *disk-cleanup*: Interactive disk space cleanup for Arch Linux with btrfs/snapper support.
 - *disk-initial-cleanup*: One-time setup script for disk space management (run as root).
 - *disk-usage-report*: Displays a comprehensive disk usage breakdown.
-- *nas-bypass*: Adds an explicit routing rule to keep NAS-subnet traffic off the Surfshark VPN tunnel, preventing NFS mount freezes.
+- *nas-bypass*: Routes NAS-subnet traffic around the Surfshark VPN tunnel to prevent NFS mount freezes. (The NAS now lives on the Atria mesh subnet, so this is only needed if it moves back.)
 - *startup.sh*: Runs programs and applies settings on desktop session startup.
 - *startup_numpad.sh*: Starts the kmonad numpad keyboard configuration.
 - *startup_root.sh*: Root-level startup script; handles NAS mounting and related setup.

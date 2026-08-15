@@ -43,7 +43,9 @@ source "$BOOTSTRAP_DIR/lib/payload.sh"   # DATA_DIRS / HOME_INCLUDE / HOME_EXCLU
 NAS_MOUNT="$HOME/nas"
 NAS_HOME="$NAS_MOUNT/Home"               # the live mirror of $HOME on the NAS
 REMOTE_PATH="/volume1/Drive"
-TARGET_IPS=("192.168.0.10" "192.168.0.11" "192.168.7.103")
+# NAS moved to the Atria mesh subnet (192.168.7.x) after leaving the Virgin router.
+# Old Virgin-router IPs kept as fallbacks in case it gets plugged back in.
+TARGET_IPS=("192.168.7.101" "192.168.0.10" "192.168.0.11" "192.168.7.103")
 
 # --- args -----------------------------------------------------------------
 DO_DATA=0; DO_HOME=1; FULL=1; MIRROR=0; DRYRUN=0; ASSUME_YES=0

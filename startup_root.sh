@@ -3,8 +3,9 @@
 # Configuration
 MOUNT_POINT="/home/jdyer/nas"
 REMOTE_PATH="/volume1/Drive"
-# Re-ordered to put the working one first
-TARGET_IPS=("192.168.0.10" "192.168.0.11" "192.168.7.103")
+# NAS moved to the Atria mesh subnet (192.168.7.x) after leaving the Virgin router.
+# Old Virgin-router IPs kept as fallbacks in case it gets plugged back in.
+TARGET_IPS=("192.168.7.101" "192.168.0.10" "192.168.0.11" "192.168.7.103")
 SCAN_RANGE=({100..110})
 SUBNET="192.168.7"
 
