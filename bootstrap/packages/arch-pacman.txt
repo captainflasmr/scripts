@@ -45,7 +45,6 @@ gimp-plugin-gmic
 github-cli
 gnome-keyring
 gnuplot
-harper
 gparted
 grim
 gthumb
@@ -84,15 +83,12 @@ mpv
 isync
 ncdu
 nfs-utils
-ninja
-niri
 nmap
 noto-fonts-emoji
 npm
 obs-studio
 okular
 ollama
-open-webui
 pandoc-cli
 pass
 pavucontrol
@@ -163,7 +159,6 @@ xdg-desktop-portal-wlr
 ydotool
 xournalpp
 yt-dlp
-zed
 zip
 ffmpeg
 gst-libav

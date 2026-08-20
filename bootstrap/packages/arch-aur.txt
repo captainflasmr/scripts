@@ -3,7 +3,6 @@ autotiling
 f3
 grpcui
 grpcurl-bin
-lmstudio-bin
 libretro-cap32-git
 makemkv
 mu
