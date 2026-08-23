@@ -392,9 +392,9 @@ function do_it ()
         S1=$(mktemp)
         S2=$(mktemp)
         cd "$SRC" || return 1
-        ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S1"
+        ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" --ignore="lost+found" > "$S1"
         cd "$DST" || return 1
-        ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" > "$S2"
+        ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" --ignore="lost+found" > "$S2"
         diff --side-by-side --suppress-common-lines "$S1" "$S2"
         rm -f "$S1" "$S2"
     fi
