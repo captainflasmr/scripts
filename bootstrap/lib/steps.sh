@@ -152,31 +152,58 @@ step_gh_setup() {
 }
 
 # --- empty the default GNOME keyring password ------------------------------
-# greetd + nwg-hello (Arch/sway) never unlocks the keyring via PAM, so any
-# Default* keyring that has a password triggers an "enter password to unlock"
-# dialog at every login — the first caller is usually gcr-ssh-agent via
-# systemd/user/ssh-add-key.service. Deleting the Default* keyrings makes
-# gnome-keyring recreate the default keyring with an empty password on first
-# use: no prompt. Backs up first; no-op when no Default* keyrings exist.
-# Safe on Mint too: PAM unlocks the separate login keyring there, and a stray
-# Default* keyring (restored from the stick's home payload) would only prompt.
+# A no-PAM sway box (greetd/nwg-hello, or Garuda's sway session) never unlocks
+# the GNOME keyring at login, so any Default*/login keyring carrying a
+# password triggers an "enter password to unlock" dialog at every login; the
+# first caller is usually gcr-ssh-agent (via systemd/user/ssh-add-key.service).
+#
+# Deleting the keyrings makes gnome-keyring recreate the default keyring with
+# an empty password on first use -> no unlock prompt. The catch: a no-PAM box
+# runs TWO daemons that race over the Secret Service name -- the systemd
+# socket-activated one (--foreground) and a D-Bus-activated --start one (from
+# /usr/share/dbus-1/services/org.freedesktop.secrets.service). `systemctl
+# restart` only touches the systemd daemon; the --start one keeps the deleted
+# files open in memory and writes them back passworded. So we kill EVERY
+# gnome-keyring-daemon process before deleting, then bring the systemd unit
+# back as the sole daemon. (See DCIM/content/linux.org, "Killing the GNOME
+# keyring..." for the full saga.)
+#
+# A SECOND dialog can remain: gcr-ssh-agent prompting for the SSH key
+# passphrase because it won't read its own stored item back on a no-PAM box.
+# The robust cure for that one is an empty passphrase on the key itself
+# (ssh-keygen -p -N "" -f ~/.ssh/id_ed25519); with a passphrase-less key
+# gcr-ssh-agent never touches the keyring at login, so neither dialog fires.
+# The bootstrap can't do that non-interactively (needs the old passphrase), so
+# remove it once on a working box and refresh-usb.sh carries the key.
+#
+# Backs up first; no-op when no *.keyring files exist. Safe on Mint too: PAM
+# recreates+unlocks the login keyring there, so deleting a stray Default*
+# (restored from the stick's home payload) only removes a spurious prompt.
 step_keyring_empty() {
     section "Emptying default GNOME keyring password"
     local keys="$HOME/.local/share/keyrings"
+    [[ -d $keys ]] || { info "no keyrings directory, nothing to do"; return 0; }
+
     local had_any=0 f
     shopt -s nullglob
-    for f in "$keys"/Default*.keyring; do had_any=1; break; done
+    for f in "$keys"/*.keyring; do had_any=1; break; done
     shopt -u nullglob
-    [[ $had_any == 0 ]] && { info "no Default* keyrings present, nothing to do"; return 0; }
+    [[ $had_any == 0 ]] && { info "no *.keyring files present, nothing to do"; return 0; }
 
     local bak="$keys.bak.$(date +%Y%m%d)"
     cp -a "$keys" "$bak"
     info "backed up keyrings -> $bak"
 
-    # restart the daemon so it doesn't hold the deleted files open
-    systemctl --user restart gnome-keyring-daemon.socket gnome-keyring-daemon.service 2>/dev/null || true
-    rm -f "$keys/default" "$keys"/Default*.keyring
-    info "default keyring will be recreated with an empty password (no unlock prompt)"
+    # stop the systemd unit AND kill any D-Bus-activated --start daemon so none
+    # holds the to-be-deleted files open and rewrites them back passworded.
+    systemctl --user stop gnome-keyring-daemon.socket gnome-keyring-daemon.service 2>/dev/null || true
+    pkill -u "$USER" -f /usr/bin/gnome-keyring-daemon 2>/dev/null || true
+    sleep 1
+    rm -f "$keys/default" "$keys"/*.keyring   # keep user.keystore (pkcs11)
+    # restart the systemd unit as the sole daemon; it recreates the default
+    # keyring with an empty password on first use, no prompt.
+    systemctl --user start gnome-keyring-daemon.socket gnome-keyring-daemon.service 2>/dev/null || true
+    info "keyrings deleted; default keyring will be recreated with an empty password (no unlock prompt)"
 }
 
 # --- cron + NAS auto-mount on reboot --------------------------------------
