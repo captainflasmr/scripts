@@ -94,6 +94,7 @@ step_restore_home
 step_set_shell
 step_groups
 step_gh_setup
+step_keyring_empty
 if confirm "Set up reboot NAS auto-mount cron (only useful on your LAN)?"; then
     step_cron_nasmount
 fi

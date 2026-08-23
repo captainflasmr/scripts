@@ -151,6 +151,34 @@ step_gh_setup() {
     [[ -f $HOME/.config/gh/hosts.yml ]] && chmod 600 "$HOME/.config/gh/hosts.yml"
 }
 
+# --- empty the default GNOME keyring password ------------------------------
+# greetd + nwg-hello (Arch/sway) never unlocks the keyring via PAM, so any
+# Default* keyring that has a password triggers an "enter password to unlock"
+# dialog at every login — the first caller is usually gcr-ssh-agent via
+# systemd/user/ssh-add-key.service. Deleting the Default* keyrings makes
+# gnome-keyring recreate the default keyring with an empty password on first
+# use: no prompt. Backs up first; no-op when no Default* keyrings exist.
+# Safe on Mint too: PAM unlocks the separate login keyring there, and a stray
+# Default* keyring (restored from the stick's home payload) would only prompt.
+step_keyring_empty() {
+    section "Emptying default GNOME keyring password"
+    local keys="$HOME/.local/share/keyrings"
+    local had_any=0 f
+    shopt -s nullglob
+    for f in "$keys"/Default*.keyring; do had_any=1; break; done
+    shopt -u nullglob
+    [[ $had_any == 0 ]] && { info "no Default* keyrings present, nothing to do"; return 0; }
+
+    local bak="$keys.bak.$(date +%Y%m%d)"
+    cp -a "$keys" "$bak"
+    info "backed up keyrings -> $bak"
+
+    # restart the daemon so it doesn't hold the deleted files open
+    systemctl --user restart gnome-keyring-daemon.socket gnome-keyring-daemon.service 2>/dev/null || true
+    rm -f "$keys/default" "$keys"/Default*.keyring
+    info "default keyring will be recreated with an empty password (no unlock prompt)"
+}
+
 # --- cron + NAS auto-mount on reboot --------------------------------------
 # Optional: only useful on machines that live on your LAN with the NAS.
 step_cron_nasmount() {
