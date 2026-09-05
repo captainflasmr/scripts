@@ -24,6 +24,9 @@
 # exact mirror of the NAS. Full mode includes secrets (it is a whole-home
 # mirror) and re-tightens their perms; in --curated mode they are never touched.
 #
+# Mozilla + opencode data (big, machine-local dirs) are always skipped on the
+# pull — see SLOW_DIRS below. The push side (do_backup) still backs them up.
+#
 # Flags:
 #   --curated    pull curated dotfiles only (default is full)
 #   --no-home    skip curated dotfiles + bin + .config
@@ -99,6 +102,12 @@ RSYNC=( rsync -rlptv --human-readable )
 (( MIRROR )) && RSYNC+=( --delete )
 (( DRYRUN )) && RSYNC+=( -n )
 
+# Pull-side skips: big, machine-local dirs that are slow to come down the wire
+# and never need restoring wholesale. do_backup still mirrors them to the NAS.
+SLOW_DIRS=( .mozilla .config/mozilla .local/share/opencode )
+SLOW_EXCLUDES=()
+for d in "${SLOW_DIRS[@]}"; do SLOW_EXCLUDES+=( --exclude "$d/" ); done
+
 if (( FULL )); then
     SCOPE="FULL home (= do_backup set, incl. secrets)"
 else
@@ -119,7 +128,7 @@ if [[ $FULL == 1 ]]; then
     info "files-from: $HOME_INCLUDE_FILE"
     start_epoch=$(date +%s)
     "${RSYNC[@]}" --files-from="$HOME_INCLUDE_FILE" --exclude-from="$HOME_EXCLUDE_FILE" \
-        "$NAS_HOME/" "$HOME/"
+        "${SLOW_EXCLUDES[@]}" "$NAS_HOME/" "$HOME/"
     elapsed=$(( $(date +%s) - start_epoch ))
     info "✓ full sync done (${elapsed}s)"
     # secrets came across in the mirror — re-tighten them (rsync preserves perms,
@@ -154,11 +163,17 @@ fi
 # Secrets are excluded on top of HOME_EXCLUDES — those belong in the gpg archive.
 if [[ $DO_HOME == 1 ]]; then
     section "Pulling curated home"
-    local_excludes=( "${HOME_EXCLUDES[@]}"
+    local_excludes=( "${HOME_EXCLUDES[@]}" "${SLOW_EXCLUDES[@]}"
         --exclude '.gnupg/' --exclude '.ssh/'
         --exclude '.authinfo' --exclude '.authinfo.gpg' --exclude '.mbsyncpass*' )
     home_start=$(date +%s)
     for item in "${HOME_INCLUDE[@]}"; do
+        # skip whole items that are (or live under) a slow dir
+        for d in "${SLOW_DIRS[@]}"; do
+            if [[ $item == "$d" || $item == "$d"/* ]]; then
+                warn "skip (slow dir): $item"; continue 2
+            fi
+        done
         if [[ -e $NAS_HOME/$item ]]; then
             info "~/$item <- NAS"
             "${RSYNC[@]}" "${local_excludes[@]}" "$NAS_HOME/$item" "$HOME/"
