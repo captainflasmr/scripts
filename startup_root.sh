@@ -22,6 +22,17 @@ chown jdyer "$MOUNT_POINT" 2>/dev/null || true
 echo "Starting NAS mount loop..."
 log "NAS mount loop starting"
 
+# NFS-over-TCP defaults to just 2 outstanding RPCs per connection
+# (sunrpc.tcp_slot_table_entries=2). On a WiFi/mesh path (~4ms RTT) that caps
+# both bulk throughput and metadata concurrency. Raise it before mounting so
+# every new transport picks it up. Persistent copy lives in
+# /etc/sysctl.d/90-nfs-slots.conf.
+modprobe sunrpc 2>/dev/null || true
+if [[ -w /proc/sys/sunrpc/tcp_slot_table_entries ]]; then
+    echo 128 > /proc/sys/sunrpc/tcp_slot_table_entries
+    log "set sunrpc.tcp_slot_table_entries=128"
+fi
+
 while [[ ! -d "$MOUNT_POINT/Home" ]]; do
     # Only hosts that actually speak NFS are worth mounting: a device that
     # merely answers ping (printers, phones, other PCs) would otherwise make
@@ -35,11 +46,16 @@ while [[ ! -d "$MOUNT_POINT/Home" ]]; do
 
     # Try to mount; success is verified by ~/nas/Home appearing. The mount is
     # bounded with timeout so a flaky/filtering host can't stall the loop.
+    # rsize/wsize=1M: fewer RPCs per byte (client/server negotiate down if the
+    # NAS can't do 1M). noatime: no atime write traffic on the backup target.
+    # actimeo=60: stretch attribute caching to cut revalidation traffic.
     try_mount () {
         local ip="$1"
         nfs_ports_open "$ip" || { log "skip $ip (no NFS ports)"; return 1; }
         echo "Attempting to mount via $ip..."
-        timeout 15 mount -t nfs -o nfsvers=3 "$ip:$REMOTE_PATH" "$MOUNT_POINT" &>/dev/null
+        timeout 15 mount -t nfs \
+            -o nfsvers=3,rsize=1048576,wsize=1048576,noatime,actimeo=60 \
+            "$ip:$REMOTE_PATH" "$MOUNT_POINT" &>/dev/null
         if [[ -d "$MOUNT_POINT/Home" ]]; then
             echo "Success! NAS is mounted via $ip"
             log "SUCCESS: mounted via $ip"
