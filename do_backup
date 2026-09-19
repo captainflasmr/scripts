@@ -47,9 +47,9 @@ GIT_INCLUDE_OVERRIDES=(
     '/.config/sway/config.d/power_save'
 )
 
-# Remove any temp git-ignore exclude file on exit/abort. Guarded so an early
-# exit before cleanup_git_excludes() is defined doesn't error.
-trap 'command -v cleanup_git_excludes >/dev/null 2>&1 && cleanup_git_excludes' EXIT INT TERM
+# Remove temp files (git-ignore excludes, shard lists) on exit/abort. Guarded so
+# an early exit before cleanup_temp() is defined doesn't error.
+trap 'command -v cleanup_temp >/dev/null 2>&1 && cleanup_temp' EXIT INT TERM
 
 function list_filters ()
 {
@@ -58,6 +58,7 @@ function list_filters ()
     echo "trash    : $TRASH"
     echo "sanity   : $SANITY"
     echo "excluded : $EXCL"
+    echo "jobs     : $JOBS"
 }
 
 function select_dir ()
@@ -264,8 +265,11 @@ function do_input ()
 
 # Path to a temp file of git-derived exclude patterns, populated by
 # build_gitignore_excludes() for the current do_it() run and removed by
-# cleanup_git_excludes() (also wired to EXIT).
+# cleanup_temp() (also wired to EXIT).
 GIT_EXCLUDE_FILE=""
+# Temp dir holding one --files-from shard list per rsync job, created by
+# run_sharded_rsync() and removed by cleanup_temp() (also wired to EXIT).
+SHARD_DIR=""
 
 function cleanup_git_excludes ()
 {
@@ -273,6 +277,15 @@ function cleanup_git_excludes ()
         rm -f "$GIT_EXCLUDE_FILE"
     fi
     GIT_EXCLUDE_FILE=""
+}
+
+function cleanup_temp ()
+{
+    cleanup_git_excludes
+    if [[ -n "$SHARD_DIR" && -d "$SHARD_DIR" ]]; then
+        rm -rf "$SHARD_DIR"
+    fi
+    SHARD_DIR=""
 }
 
 # For every git repository found under $1 (bounded depth; heavy junk dirs
@@ -321,6 +334,82 @@ function build_gitignore_excludes ()
         rm -f "$tmp"
         GIT_EXCLUDE_FILE=""
     fi
+}
+
+# Split the include list into $JOBS disjoint --files-from shard files, greedy
+# largest-item-first so each job carries a similar amount of data. Item sizes
+# only guide the split; rsync still decides what actually transfers. Lowers
+# JOBS if there are fewer list items than jobs. SHARD_DIR must already exist.
+function build_shards ()
+{
+    local items="$SHARD_DIR/items" sorted="$SHARD_DIR/sizes"
+    local item size i best n
+    grep -v '^#' "$INC_FILE" | sed '/^[[:space:]]*$/d' > "$items" || return 1
+    n=$(wc -l < "$items")
+    (( JOBS > n )) && JOBS=$n
+    (( JOBS < 1 )) && return 1
+
+    : > "$sorted"
+    while IFS= read -r item || [[ -n "$item" ]]; do
+        size=$(du -sb -- "$SRC/$item" 2>/dev/null | cut -f1)
+        printf '%s\t%s\n' "${size:-0}" "$item" >> "$sorted"
+    done < "$items"
+    sort -rn -k1,1 -o "$sorted" "$sorted"
+
+    local -a load=()
+    for ((i = 0; i < JOBS; i++)); do
+        load+=(0)
+        : > "$SHARD_DIR/shard.$i"
+    done
+    while IFS=$'\t' read -r size item; do
+        best=0
+        for ((i = 1; i < JOBS; i++)); do
+            (( load[i] < load[best] )) && best=$i
+        done
+        printf '%s\n' "$item" >> "$SHARD_DIR/shard.$best"
+        load[best]=$(( load[best] + size ))
+    done < "$sorted"
+}
+
+# Run one rsync per shard in parallel. Every shard keeps $SRC as the transfer
+# root, so anchored excludes and --delete scoping are identical to the serial
+# run: rsync only deletes inside the dirs listed in its own --files-from, and
+# the shards are disjoint.
+function run_sharded_rsync ()
+{
+    SHARD_DIR=$(mktemp -d -t do_backup-shards.XXXXXX)
+    if [[ -z "$SHARD_DIR" || ! -d "$SHARD_DIR" ]] || ! build_shards; then
+        echo "sharding unavailable; running serial"
+        RSYNC_CMD+=(--files-from="${INC_FILE}" "${SRC}/" "${DST}/")
+        "${RSYNC_CMD[@]}" | stdbuf -oL grep -v "$FILTERSTR"
+        return
+    fi
+
+    echo "Parallel rsync: $JOBS jobs"
+    echo "${RSYNC_CMD[*]} --files-from=<shard.N> ${SRC}/ ${DST}/"
+    local i
+    for ((i = 0; i < JOBS; i++)); do
+        printf '  [j%d] %s item(s)\n' "$i" "$(wc -l < "$SHARD_DIR/shard.$i")"
+    done
+
+    local -a pids=()
+    for ((i = 0; i < JOBS; i++)); do
+        (
+            "${RSYNC_CMD[@]}" --no-progress \
+                --files-from="$SHARD_DIR/shard.$i" "$SRC/" "$DST/" |
+                stdbuf -oL grep -v "$FILTERSTR" |
+                sed -u "s/^/[j$i] /"
+            exit "${PIPESTATUS[0]}"
+        ) &
+        pids+=($!)
+    done
+
+    for i in "${!pids[@]}"; do
+        if ! wait "${pids[$i]}"; then
+            echo
+            echo "WARNING: rsync shard j$i failed (see [j$i] output above)"
+        fi
+    done
 }
 
 function do_it ()
@@ -372,20 +461,27 @@ function do_it ()
         RSYNC_CMD+=(--delete-excluded)
     fi
 
-    if [[ $INC == 1 ]]; then
-        RSYNC_CMD+=(--files-from="${INC_FILE}")
-    fi
-
     if [[ $TRASH == 1 ]]; then
         RSYNC_CMD+=(--backup-dir="${BACKUPDIR}")
     fi
 
-    RSYNC_CMD+=("${SRC}/" "${DST}/")
-
     list_filters
-    echo "${RSYNC_CMD[*]}"
-    
-    "${RSYNC_CMD[@]}" | stdbuf -oL grep -v "$FILTERSTR"
+    if [[ $INC == 1 && $JOBS -gt 1 ]]; then
+        run_sharded_rsync
+    else
+        if [[ $INC == 1 ]]; then
+            RSYNC_CMD+=(--files-from="${INC_FILE}")
+        elif [[ $JOBS -gt 1 ]]; then
+            echo
+            echo "note: parallel jobs only apply to include-list backups (home, usb-home, ventoy);"
+            echo "      running serial for this target."
+            echo
+        fi
+        RSYNC_CMD+=("${SRC}/" "${DST}/")
+        echo "${RSYNC_CMD[*]}"
+
+        "${RSYNC_CMD[@]}" | stdbuf -oL grep -v "$FILTERSTR"
+    fi
 
     if [[ $SANITY == 1 ]]; then
         echo "Sanity Check $SRC -> $DST ...."
@@ -466,14 +562,30 @@ function backup_home ()
 }
 
 SKIP_TIDY=0
+JOBS="${DO_BACKUP_JOBS:-3}"
 ARGS=()
-for arg in "$@"; do
-    case $arg in
-        --skip-tidy) SKIP_TIDY=1 ;;
-        *) ARGS+=("$arg") ;;
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --skip-tidy) SKIP_TIDY=1; shift ;;
+        --jobs)
+            if [[ ${2:-} =~ ^[0-9]+$ ]]; then
+                JOBS="$2"; shift 2
+            else
+                echo "Invalid --jobs value '${2:-}'; running serial."
+                JOBS=1
+                shift
+                [[ ${1:-} == --* ]] || shift || true
+            fi
+            ;;
+        --jobs=*) JOBS="${1#*=}"; shift ;;
+        *) ARGS+=("$1"); shift ;;
     esac
 done
 set -- "${ARGS[@]}"
+if [[ ! $JOBS =~ ^[0-9]+$ || $JOBS -lt 1 ]]; then
+    echo "Invalid --jobs '$JOBS'; running serial."
+    JOBS=1
+fi
 
 function do_backup_home ()
 {
