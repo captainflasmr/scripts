@@ -139,6 +139,7 @@ speedtest-cli
 spice-gtk
 sshfs
 swayr
+subversion
 syncthing
 tesseract
 tesseract-data-eng
