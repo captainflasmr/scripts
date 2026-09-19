@@ -84,7 +84,9 @@ ensure_nas() {
     for ip in "${TARGET_IPS[@]}"; do
         ping -c1 -W1 "$ip" &>/dev/null || continue
         info "trying $ip:$REMOTE_PATH"
-        sudo mount -t nfs -o nfsvers=3 "$ip:$REMOTE_PATH" "$NAS_MOUNT" &>/dev/null
+        sudo mount -t nfs \
+            -o nfsvers=3,rsize=1048576,wsize=1048576,noatime,actimeo=60 \
+            "$ip:$REMOTE_PATH" "$NAS_MOUNT" &>/dev/null
         mountpoint -q "$NAS_MOUNT" && [[ -d $NAS_HOME ]] && { info "mounted via $ip"; return 0; }
     done
     return 1
