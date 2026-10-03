@@ -98,17 +98,19 @@ Order of operations: detect distro → system update → install packages (pacma
 Once a machine is installed, =sync-from-nas.sh= keeps it current by pulling the live data straight off the NAS (which mirrors =$HOME= under =/volume1/Drive/Home=).  This is what you run after hopping onto a spare laptop that was set up from the stick weeks ago — the stick is a snapshot; the NAS is live.
 
 #+begin_src bash
-~/bin/bootstrap/sync-from-nas.sh             # pull bulk data (DCIM/source/wallpaper/Maildir)
-~/bin/bootstrap/sync-from-nas.sh --home      # also refresh dotfiles + bin + .config
-~/bin/bootstrap/sync-from-nas.sh --full      # pull the ENTIRE home that do_backup pushed
+~/bin/bootstrap/sync-from-nas.sh             # mirror the ENTIRE home (default = --full)
+~/bin/bootstrap/sync-from-nas.sh --curated   # curated dotfiles only
+~/bin/bootstrap/sync-from-nas.sh --curated --data  # + bulk data dirs
+~/bin/bootstrap/sync-from-nas.sh --no-mirror # additive: keep local-only files
+~/bin/bootstrap/sync-from-nas.sh --thunderbird  # also pull ~/.thunderbird (skipped by default)
 ~/bin/bootstrap/sync-from-nas.sh --dry-run   # show what would change, write nothing
 #+end_src
 
-It auto-mounts the NAS if it isn't already (same NFS targets as =~/bin/startup_root.sh=) and *refuses to run* unless the =Home/= mirror is actually visible — so a missing or half-up mount aborts instead of letting rsync sync from an empty path over your good local files. It pulls *additively* by default (never deletes local-only files); pass =--mirror= for an exact mirror.
+It auto-mounts the NAS if it isn't already (same NFS targets as =~/bin/startup_root.sh=) and *refuses to run* unless the =Home/= mirror is actually visible — so a missing or half-up mount aborts instead of letting rsync sync from an empty path over your good local files. It *mirrors by default* (deletes local-only files); pass =--no-mirror= for an additive pull. Excluded machine-local data (VMs, containers, auth tokens, local state) is never deleted — only disposable cache junk may go, so local-only trees such as =~/.config/Cursor= are removed instead of tripping rsync's "cannot delete non-empty directory" warnings. The Thunderbird profile is machine-local and skipped by default; pass =--thunderbird= to pull =~/.thunderbird= as well.
 
-=--full= is the exact pull-counterpart of =do_backup=: both use the same shared lists (see below), so whatever =do_backup= mirrors *up* to the NAS, =--full= brings *down* — a true round-trip, secrets included (their perms are re-tightened after). The default/curated mode never touches secrets.
+=--full= is the exact pull-counterpart of =do_backup=: both use the same shared lists (see below), so whatever =do_backup= mirrors *up* to the NAS, =--full= brings *down* — a true round-trip, secrets included (their perms are re-tightened after). The curated mode never touches secrets.
 
-flags: =--full= (whole do_backup home) · =--home= (dotfiles too) · =--no-data= · =--mirror= (delete local-only) · =--dry-run= · =--yes=
+flags: =--full= (whole do_backup home, default) · =--curated= (dotfiles only) · =--data= / =--no-data= · =--no-home= · =--mirror= (default; delete local-only) / =--no-mirror= · =--thunderbird= (also pull ~/.thunderbird) · =--dry-run= · =--yes=
 
 * The single source of truth for "my data"
 
