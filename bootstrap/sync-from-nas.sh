@@ -6,9 +6,10 @@
 # up — e.g. a spare laptop you hop onto — with whatever is currently on the NAS,
 # which holds the live mirror of your home under /volume1/Drive/Home.
 #
-#     ~/bin/bootstrap/sync-from-nas.sh            # pull the ENTIRE home (default = --full)
+#     ~/bin/bootstrap/sync-from-nas.sh            # mirror the ENTIRE home (default = --full)
 #     ~/bin/bootstrap/sync-from-nas.sh --curated  # pull curated dotfiles only
 #     ~/bin/bootstrap/sync-from-nas.sh --data     # also pull bulk data dirs
+#     ~/bin/bootstrap/sync-from-nas.sh --no-mirror  # keep local-only files (additive)
 #     ~/bin/bootstrap/sync-from-nas.sh --dry-run  # show what would change, do nothing
 #
 # --full (the default) is the exact pull-counterpart of do_backup: it uses the
@@ -19,13 +20,20 @@
 #
 # Reliability: it refuses to run unless the NAS is actually mounted and the
 # Home/ mirror is visible, so a missing/half-up mount aborts the run rather than
-# letting rsync sync from an empty path over your good local files. It pulls
-# additively by default (never deletes local-only files) — pass --mirror for an
-# exact mirror of the NAS. Full mode includes secrets (it is a whole-home
-# mirror) and re-tightens their perms; in --curated mode they are never touched.
+# letting rsync sync from an empty path over your good local files. It mirrors
+# by default (--delete: removes local-only files); pass --no-mirror for an
+# additive pull that never deletes. Excluded machine-local data (VMs, containers,
+# auth tokens, ...) is never deleted, and the only excluded local-only files a
+# mirror does remove are disposable caches (Cache/, __pycache__, … , the
+# JUNK_AT_RISK list below) — that is what lets a local-only tree like
+# ~/.config/Cursor go instead of failing with rsync's "cannot delete non-empty
+# directory" warnings. Full mode includes secrets (it is a whole-home mirror)
+# and re-tightens their perms; in --curated mode they are never touched.
 #
 # Mozilla + opencode data (big, machine-local dirs) are always skipped on the
 # pull — see SLOW_DIRS below. The push side (do_backup) still backs them up.
+# Thunderbird's profile (~/.thunderbird) is skipped by default too — pass
+# --thunderbird to pull it as well.
 #
 # Flags:
 #   --curated    pull curated dotfiles only (default is full)
@@ -33,6 +41,9 @@
 #   --data       include bulk data dirs (default is dotfiles only)
 #   --no-data    skip the bulk data dirs
 #   --mirror     delete local-only files so the target exactly mirrors the NAS
+#                (default)
+#   --no-mirror  keep local-only files (additive pull; alias --additive)
+#   --thunderbird  also pull ~/.thunderbird (skipped by default)
 #   --dry-run    rsync -n: report changes without writing anything
 #   --yes, -y    assume "yes" to the confirmation prompt
 #   -h, --help   this help
@@ -51,7 +62,7 @@ REMOTE_PATH="/volume1/Drive"
 TARGET_IPS=("192.168.7.101" "192.168.0.10" "192.168.0.11" "192.168.7.103")
 
 # --- args -----------------------------------------------------------------
-DO_DATA=0; DO_HOME=1; FULL=1; MIRROR=0; DRYRUN=0; ASSUME_YES=0
+DO_DATA=0; DO_HOME=1; FULL=1; MIRROR=1; DRYRUN=0; ASSUME_YES=0; DO_THUNDERBIRD=0
 for a in "$@"; do
     case "$a" in
         --full)     FULL=1 ;;
@@ -60,6 +71,8 @@ for a in "$@"; do
         --data)     DO_DATA=1 ;;
         --no-data)  DO_DATA=0 ;;
         --mirror)   MIRROR=1 ;;
+        --no-mirror|--additive) MIRROR=0 ;;
+        --thunderbird|--with-thunderbird) DO_THUNDERBIRD=1 ;;
         --dry-run|-n) DRYRUN=1 ;;
         --yes|-y)   ASSUME_YES=1 ;;
         -h|--help)  sed -n '2,/^set /{/^set /d;p}' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -106,9 +119,41 @@ RSYNC=( rsync -rlptv --human-readable )
 
 # Pull-side skips: big, machine-local dirs that are slow to come down the wire
 # and never need restoring wholesale. do_backup still mirrors them to the NAS.
+# .thunderbird is the same kind of live mail profile and is skipped by default
+# too — pass --thunderbird to pull it as well.
 SLOW_DIRS=( .mozilla .config/mozilla .local/share/opencode )
+(( DO_THUNDERBIRD )) || SLOW_DIRS+=( .thunderbird )
 SLOW_EXCLUDES=()
 for d in "${SLOW_DIRS[@]}"; do SLOW_EXCLUDES+=( --exclude "$d/" ); done
+
+# Mirror mode deletes local-only files, but a plain exclude also *protects* what
+# it matches from deletion. Local-only trees that hold nothing but excluded
+# cache junk (e.g. ~/.config/Cursor, GIMP plug-in __pycache__) therefore linger
+# with rsync's noisy "cannot delete non-empty directory: ..." warnings. Mark
+# disposable patterns "at risk" (a receiver-side include: it cancels protection
+# from deletion without un-hiding them on the sender, so caches are still never
+# pulled FROM the NAS). Everything not listed here stays protected — VMs,
+# containers, auth tokens, local state. Keep in step with the disposable
+# patterns in lib/home-exclude.txt.
+JUNK_AT_RISK=(
+    'Cache' 'Cached*' 'Code Cache' 'Singleton*' '.cache*'
+    'http-cache' 'image-dired' '.thumbnails'
+    '__pycache__' '*.pyc' '*.o' '*.ali' 'node_modules'
+    '*~' '.#*' '#*' '*.bak' '*.lock*' '*.socket' 'lock' '*[tT]rash*'
+    '.claude/cache' '.claude/downloads' '.claude/file-history'
+    '.claude/paste-cache' '.claude/session-env' '.claude/shell-snapshots'
+    '.claude/statsig' '.claude/telemetry'
+    '.config/Code/User/workspaceStorage' '.config/Code/logs'
+    '.emacs.d/eln-cache' '.emacs.d/newsticker'
+    '.local/share/RecentDocuments' '.local/share/baloo'
+    '.local/share/gvfs-metadata' '.local/share/sddm/xorg-session.log'
+    '.local/share/webkitgtk/databases'
+    'qBittorrent/lockfile' 'qBittorrent/ipc-socket'
+)
+if (( MIRROR )); then
+    for p in "${JUNK_AT_RISK[@]}"; do RSYNC+=( --filter "R $p" ); done
+    unset p
+fi
 
 if (( FULL )); then
     SCOPE="FULL home (= do_backup set, incl. secrets)"
@@ -119,7 +164,8 @@ section "Sync FROM NAS"
 info "source : $NAS_HOME/"
 info "target : $HOME/"
 info "scope  : $SCOPE"
-info "mode   : $( ((MIRROR)) && echo 'mirror (--delete local-only)' || echo 'additive' )$( ((DRYRUN)) && echo '  [dry-run]' )"
+info "mode   : $( ((MIRROR)) && echo 'mirror (delete local-only, default)' || echo 'additive (keep local-only)' )$( ((DRYRUN)) && echo '  [dry-run]' )"
+(( DO_THUNDERBIRD )) || info "skip   : .thunderbird (machine-local; pass --thunderbird to pull)"
 confirm "Pull data from the NAS onto this machine?" || die "aborted"
 
 # --- full mirror (the exact pull-counterpart of do_backup) ----------------
