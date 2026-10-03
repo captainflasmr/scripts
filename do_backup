@@ -45,6 +45,11 @@ GIT_INCLUDE_OVERRIDES=(
     '/.config/waybar/**'
     # sway/ itself is tracked, but this single config file is git-ignored.
     '/.config/sway/config.d/power_save'
+    # ~/wallpaper is a git repo that tracks only its scripts/README; .gitignore
+    # drops every image file. Re-include the whole tree so the wallpapers are
+    # backed up, not just the git-tracked files.
+    '/wallpaper/'
+    '/wallpaper/**'
 )
 
 # Remove temp files (git-ignore excludes, shard lists) on exit/abort. Guarded so
