@@ -74,7 +74,7 @@ def mix(base, pw, t, hashed=True):
 
 def write_foot(pw, t):
     bg, fg, normal, bright = mix(ZENBURN, pw, t, hashed=False)
-    lines = [f"# Zenburn tinted with pywal ({t:.0%} pywal)", "[colors]",
+    lines = [f"# Zenburn tinted with pywal ({t:.0%} pywal)", "[colors-dark]",
              f"foreground={fg}", f"background={bg}"]
     for i, c in enumerate(normal):
         lines.append(f"regular{i}={c}")

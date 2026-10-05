@@ -12,45 +12,14 @@ fi
 # repo (also drives refresh-usb.sh and sync-from-nas.sh). See lib/payload.sh.
 INC_FILE="$HOME/bin/bootstrap/lib/home-include.txt"
 EXC_FILE="$HOME/bin/bootstrap/lib/home-exclude.txt"
-# rsync --include patterns for paths that are git-ignored (by nested .gitignore)
-# but should still be backed up. Inserted before --exclude-from=GIT_EXCLUDE_FILE
-# so rsync's "first match wins" semantics include them before the git-ignore
-# exclusions. Patterns anchored to transfer root (leading '/').
-GIT_INCLUDE_OVERRIDES=(
-    '/.config/JetBrains/'
-    '/.config/JetBrains/IntelliJIdea2026.1/**'
-    # Firefox profile (modern XDG layout under ~/.config/mozilla/). Kept out of
-    # the ~/.config git repo (large, holds secrets + caches); backed up via
-    # override. Crash/telemetry junk pruned in home-exclude.txt.
-    '/.config/mozilla/'
-    '/.config/mozilla/**'
-    '/.emacs.d/offline-packages/local-packages/**'
-    # ~/.config is a git dotfiles repo whose .gitignore is '*' then '!dir/'.
-    # '!dir/' re-includes the directory entry but NOT its contents, so when the
-    # contents are untracked, 'git ls-files --ignored --directory' (run by
-    # build_gitignore_excludes) lists the dir as ignored and rsync drops it.
-    # These overrides re-include such dirs before --exclude-from=GIT_EXCLUDE_FILE
-    # (rsync: first matching rule wins). home-exclude.txt still prunes junk inside.
-    '/.config/alacritty/'
-    '/.config/alacritty/**'
-    '/.config/emacs/'
-    '/.config/emacs/**'
-    '/.config/darktable/'
-    '/.config/darktable/**'
-    '/.config/fish/'
-    '/.config/fish/**'
-    '/.config/environment.d/'
-    '/.config/environment.d/**'
-    '/.config/waybar/'
-    '/.config/waybar/**'
-    # sway/ itself is tracked, but this single config file is git-ignored.
-    '/.config/sway/config.d/power_save'
-    # ~/wallpaper is a git repo that tracks only its scripts/README; .gitignore
-    # drops every image file. Re-include the whole tree so the wallpapers are
-    # backed up, not just the git-tracked files.
-    '/wallpaper/'
-    '/wallpaper/**'
-)
+# Git-ignore handling (GIT_INCLUDE_OVERRIDES + build_gitignore_excludes) is
+# shared with sync-to-nas.sh so a pushed change set matches a do_backup set.
+GITIGNORE_LIB="$HOME/bin/bootstrap/lib/gitignore.sh"
+if [[ ! -r $GITIGNORE_LIB ]]; then
+    echo "ERROR: $GITIGNORE_LIB missing (bootstrap repo incomplete?)" >&2
+    exit 1
+fi
+source "$GITIGNORE_LIB"
 
 # Remove temp files (git-ignore excludes, shard lists) on exit/abort. Guarded so
 # an early exit before cleanup_temp() is defined doesn't error.
@@ -268,21 +237,9 @@ function do_input ()
     do_it
 }
 
-# Path to a temp file of git-derived exclude patterns, populated by
-# build_gitignore_excludes() for the current do_it() run and removed by
-# cleanup_temp() (also wired to EXIT).
-GIT_EXCLUDE_FILE=""
 # Temp dir holding one --files-from shard list per rsync job, created by
 # run_sharded_rsync() and removed by cleanup_temp() (also wired to EXIT).
 SHARD_DIR=""
-
-function cleanup_git_excludes ()
-{
-    if [[ -n "$GIT_EXCLUDE_FILE" && -f "$GIT_EXCLUDE_FILE" ]]; then
-        rm -f "$GIT_EXCLUDE_FILE"
-    fi
-    GIT_EXCLUDE_FILE=""
-}
 
 function cleanup_temp ()
 {
@@ -291,54 +248,6 @@ function cleanup_temp ()
         rm -rf "$SHARD_DIR"
     fi
     SHARD_DIR=""
-}
-
-# For every git repository found under $1 (bounded depth; heavy junk dirs
-# pruned), ask `git ls-files --ignored --exclude-standard` to list the paths
-# git would ignore there, then emit them as rsync exclude patterns anchored to
-# the transfer root ($1). Honors .gitignore at all levels, .git/info/exclude
-# and core.excludesFile, with correct '!' re-include handling. Safe to run on
-# non-git trees: it simply produces an empty file.
-function build_gitignore_excludes ()
-{
-    local root="$1"
-    cleanup_git_excludes
-    [[ -d "$root" ]] || return 0
-    command -v git >/dev/null 2>&1 || { echo "git not found; skipping .gitignore filtering"; return 0; }
-
-    local tmp
-    tmp=$(mktemp -t do_backup-gitignore.XXXXXX) || return 0
-
-    local gitdir repo entry full rel
-    # Prune node_modules/.cache/__pycache__ so the scan stays fast; prune .git
-    # dirs themselves so find doesn't recurse into their (large) object store.
-    while IFS= read -r -d '' gitdir; do
-        repo=$(dirname "$gitdir")
-        while IFS= read -r -d '' entry; do
-            [[ -z "$entry" ]] && continue
-            full="$repo/$entry"
-            # Strip "$root/" prefix to make the path relative to SRC. Account
-            # for the case where repo == root (no prefix to strip).
-            if [[ "$full" == "$root/"* ]]; then
-                rel=${full#"$root/"}
-            else
-                rel=$full
-            fi
-            # rsync exclude-from entries are patterns; leading '/' anchors to
-            # the transfer root. Trailing '/' (dirs from --directory) is kept.
-            printf '/%s\n' "$rel"
-        done < <(git -C "$repo" ls-files --others --ignored --exclude-standard -z --directory 2>/dev/null)
-    done < <(find "$root" -maxdepth 5 \
-                \( -name node_modules -o -name .cache -o -name __pycache__ \
-                   -o -name offline-packages \) -prune \
-                -o -type d -name .git -prune -print0 2>/dev/null) >> "$tmp"
-
-    if [[ -s "$tmp" ]]; then
-        GIT_EXCLUDE_FILE="$tmp"
-    else
-        rm -f "$tmp"
-        GIT_EXCLUDE_FILE=""
-    fi
 }
 
 # Split the include list into $JOBS disjoint --files-from shard files, greedy
@@ -507,6 +416,14 @@ function do_it ()
 
 function backup_home ()
 {
+    # Merge any changes pushed up from another machine via the NAS BEFORE we
+    # overwrite the NAS, so pending files can't be clobbered (or --delete'd) by
+    # this push. No-op when the puller isn't installed or nothing is pending.
+    if [[ -x $HOME/bin/bootstrap/nas-pending-pull.sh ]]; then
+        "$HOME/bin/bootstrap/nas-pending-pull.sh" --quiet || \
+            echo "WARNING: pending NAS pull failed; continuing with backup"
+    fi
+
     DRY=0
     INC=1
     TRASH=0

@@ -22,6 +22,11 @@ On the stick (after =refresh-usb.sh=):
 ├── install.sh            the one command you run on the new box
 ├── refresh-usb.sh        re-populate the stick from a working box
 ├── sync-from-nas.sh      pull the live data set down from the NAS
+├── sync-to-nas.sh        push local edits UP to the NAS (reverse direction)
+├── nas-watch.sh          journal changed paths (systemd user service)
+├── nas-pending-pull.sh   apply changes another machine pushed up
+├── install-nas-sync.sh   enable watcher + push timer on an edit machine
+├── systemd/user/         nas-watch.service, nas-push.service/.timer
 ├── setup-ventoy.sh       partition a blank stick (Ventoy + ext4 payload)
 ├── lib/                  common.sh, pkg.sh, steps.sh, payload.sh,
 │                         home-include.txt, home-exclude.txt (the shared lists)
@@ -111,6 +116,54 @@ It auto-mounts the NAS if it isn't already (same NFS targets as =~/bin/startup_r
 =--full= is the exact pull-counterpart of =do_backup=: both use the same shared lists (see below), so whatever =do_backup= mirrors *up* to the NAS, =--full= brings *down* — a true round-trip, secrets included (their perms are re-tightened after). The curated mode never touches secrets.
 
 flags: =--full= (whole do_backup home, default) · =--curated= (dotfiles only) · =--data= / =--no-data= · =--no-home= · =--mirror= (default; delete local-only) / =--no-mirror= · =--thunderbird= (also pull ~/.thunderbird) · =--dry-run= · =--yes=
+
+* Sending edits from a spare machine back to the main one
+
+=do_backup= publishes the main laptop's home to the NAS and =sync-from-nas.sh= pulls it onto whichever machine you're using. The reverse direction — quick edits made on a spare laptop — is handled automatically:
+
+| Piece                 | Where | What it does                                                                                                                       |
+|-----------------------+-------+------------------------------------------------------------------------------------------------------------------------------------|
+| #ERROR                | spare | journals every write under the shared include set to =~/.local/state/nas-sync/dirty.list= (inotify; no rescans)                    |
+| =sync-to-nas.sh=      | spare | pushes journaled paths to the NAS — additive, =--update=, never deletes — and records them in =<nas>/.nas-sync/pending-<host>.tsv= |
+| =nas-push.timer=      | spare | runs the push every 5 minutes, but only when the NAS is already mounted                                                            |
+| =nas-pending-pull.sh= | main  | pulls pending manifests, prints a report, opens a foot terminal if anything changed                                                |
+| =do_backup= guard     | main  | runs the puller before pushing home, so pending files can't be overwritten or =--delete='d                                         |
+| =startup.sh= hook     | all   | runs =nas-pending-pull.sh --auto= at login (waits up to 90 s for the NAS)                                                          |
+#+TBLFM: $1=nas-watch.sh= (user service)
+
+The manifests live *outside* the =Home/= mirror (=<nas>/.nas-sync/=) so no mirror run can delete them. The puller never mirrors, only applies listed files, and never overwrites a local file that is newer than the NAS copy — those show up as =conflict= lines and are archived for reference. Deletions are not propagated (a file deleted on the spare stays on the NAS/main until handled there). Live machine-local profiles (=.mozilla=, =.config/mozilla=, =.local/share/opencode=, =.thunderbird=) are never pushed up, mirroring what =sync-from-nas.sh= refuses to pull. If some other app's state starts showing up in the reports, add its path to =lib/home-exclude.txt= (the same list drives every direction).
+
+** On the spare (the machine you edit on), once
+
+#+begin_src bash
+~/bin/bootstrap/install-nas-sync.sh     # enable watcher + 5-min push timer
+~/bin/bootstrap/sync-to-nas.sh --paths bin/bootstrap bin/startup.sh bin/do_backup
+#+end_src
+
+** On the main laptop, once
+
+The first command fetches the new scripts; the second applies everything the spare queued (it may include =bin/= and =.config/= edits too). *Do this before the next =do_backup=* — the old =do_backup= has no guard yet and its =--delete= could remove the newly pushed files from the NAS before they are pulled.
+
+#+begin_src bash
+rsync -aiv ~/nas/Home/bin/bootstrap/ ~/bin/bootstrap/
+rsync -aiv ~/nas/Home/bin/startup.sh ~/bin/startup.sh
+~/bin/bootstrap/nas-pending-pull.sh --terminal
+#+end_src
+
+From then on the startup hook and the =do_backup= guard handle both directions automatically. (If =~/bin/startup.sh= has machine-local tweaks, merge the 3-line puller hook by hand instead of overwriting it.)
+
+** Day-to-day / troubleshooting
+
+#+begin_src bash
+~/bin/bootstrap/sync-to-nas.sh --status    # journal, last push, manifest
+~/bin/bootstrap/sync-to-nas.sh --dry-run   # what a push would transfer
+~/bin/bootstrap/sync-to-nas.sh             # push now instead of waiting for the timer
+~/bin/bootstrap/sync-to-nas.sh --paths bin .config/sway   # push specific paths
+~/bin/bootstrap/nas-pending-pull.sh --dry-run --terminal  # preview a pull
+~/bin/bootstrap/install-nas-sync.sh --status / --disable
+#+end_src
+
+Logs: =~/.local/state/nas-sync/push.log= (spare), =~/.local/state/nas-sync/last-pull.log= (main; also what the terminal shows), applied manifests under =<nas>/.nas-sync/done/=.
 
 * The single source of truth for "my data"
 

@@ -168,6 +168,16 @@ info "mode   : $( ((MIRROR)) && echo 'mirror (delete local-only, default)' || ec
 (( DO_THUNDERBIRD )) || info "skip   : .thunderbird (machine-local; pass --thunderbird to pull)"
 confirm "Pull data from the NAS onto this machine?" || die "aborted"
 
+# Before mirroring the NAS down, send any locally-journaled edits up. This
+# machine's newer local files could otherwise be overwritten — or deleted, in
+# mirror mode — by its own pull, and the main laptop's next do_backup could
+# lose them for good. No-op when nothing is queued / the pusher isn't
+# installed / --dry-run.
+if [[ $DRYRUN == 0 && -x $BOOTSTRAP_DIR/sync-to-nas.sh ]]; then
+    "$BOOTSTRAP_DIR/sync-to-nas.sh" --pending --quiet --if-mounted || \
+        warn "push of pending local changes failed (continuing with the pull)"
+fi
+
 # --- full mirror (the exact pull-counterpart of do_backup) ----------------
 # One rsync driven by the shared files-from/exclude-from, root = NAS Home, so
 # anchored excludes (e.g. .config/Code/logs) match exactly as they do on push.

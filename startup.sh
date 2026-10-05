@@ -34,6 +34,12 @@ udisksctl mount -b /dev/mmcblk0p1 # SD Card
 udisksctl mount -b /dev/sdb1
 battery-monitor.sh &
 
+# Pull files another machine pushed up via the NAS; opens a terminal report
+# only if something actually changed. No-op when the puller isn't installed or
+# the NAS isn't reachable.
+[[ -x $HOME/bin/bootstrap/nas-pending-pull.sh ]] && \
+    "$HOME/bin/bootstrap/nas-pending-pull.sh" --auto &>/dev/null &
+
 NUMPAD_CONNECTED=0
 KEYBOARD_CONNECTED=0
 
