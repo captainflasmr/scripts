@@ -1,0 +1,9 @@
+[Unit]
+Description=Push pending local changes to the NAS
+Documentation=file:%h/bin/bootstrap/README.org
+
+[Service]
+Type=oneshot
+# Never attempt an unattended sudo mount: only push when the NAS is mounted.
+ExecStart=%h/bin/bootstrap/sync-to-nas.sh --pending --quiet --if-mounted
+Nice=10

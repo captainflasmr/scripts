@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodically push pending changes to the NAS
+Documentation=file:%h/bin/bootstrap/README.org
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

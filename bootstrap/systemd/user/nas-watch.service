@@ -1,0 +1,12 @@
+[Unit]
+Description=Journal home-file changes for sync-to-nas.sh
+Documentation=file:%h/bin/bootstrap/README.org
+
+[Service]
+Type=simple
+ExecStart=%h/bin/bootstrap/nas-watch.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
