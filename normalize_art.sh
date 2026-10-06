@@ -57,8 +57,8 @@ DPI=300                     # metadata only; RB ignore it, other printers may no
 
 # ----- Print adjustment ----------------------------------------------------
 # 1.0 is neutral. 1.08 to 1.12 corrects the screen-to-print darkness gap.
-PRINT_LIGHTNESS_BUMP="1.10"
-SATURATION=112              # 100 = neutral
+PRINT_LIGHTNESS_BUMP="1.20"
+SATURATION=120              # 100 = neutral
 LEVEL_CLIP="1%,99%"         # trim extreme shadows/highlights before gamma lift
 SHARPEN_AMOUNT="0x0.8"
 

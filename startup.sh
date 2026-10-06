@@ -45,6 +45,11 @@ KEYBOARD_CONNECTED=0
 
 ollama serve &
 
+# OpenCode v2 shared background server (client/server model). Started from the
+# session startup script rather than systemd; local clients discover it via the
+# service registry. Idempotent - a healthy server already running is left alone.
+opencode service start &>/dev/null &
+
 while :
 do
    if [[ -L "/dev/input/by-id/usb-SEMICO_USB_Gaming_Keyboard-event-kbd" ]]; then
