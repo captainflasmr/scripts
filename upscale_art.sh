@@ -60,6 +60,17 @@ list_models() {
     done
 }
 
+# Nanoseconds -> human readable (e.g. "3.4s", "1m05s")
+fmt_dur() {
+    local ns=$1
+    local s=$((ns / 1000000000)) ms=$(( (ns / 100000000) % 10 ))
+    if (( s >= 60 )); then
+        printf '%dm%02ds' "$((s / 60))" "$((s % 60))"
+    else
+        printf '%d.%ds' "$s" "$ms"
+    fi
+}
+
 while (( $# )); do
     case "$1" in
         -m) MODEL="$2"; shift 2 ;;
@@ -108,7 +119,7 @@ echo "Format:   $FORMAT (compression $COMPRESSION)"
 echo "Log:      $LOG"
 echo "----------------------------------------"
 
-TOTAL=0; DONE=0; SKIPPED=0; FAILED=0
+TOTAL=0; DONE=0; SKIPPED=0; FAILED=0; RENDER_NS=0
 START=$SECONDS
 
 while IFS= read -r -d '' img; do
@@ -134,19 +145,27 @@ while IFS= read -r -d '' img; do
     [[ -n "$GPU" ]]  && args+=( -g "$GPU" )
     [[ -n "$TILE" ]] && args+=( -t "$TILE" )
 
-    echo "[$((DONE + SKIPPED + FAILED + 1))/$TOTAL] $rel  (${w}x${h} → width ${tw:-model})"
+    echo "[$(date '+%T')] [$((DONE + SKIPPED + FAILED + 1))/$TOTAL] $rel  (${w}x${h} → width ${tw:-model})"
     if (( DRYRUN )); then
         printf '  '; printf '%q ' "$UPSCAYL_BIN" "${args[@]}"; echo
         continue
     fi
 
     echo "[$(date '+%F %T')] $UPSCAYL_BIN ${args[*]}" >>"$LOG"
-    if "$UPSCAYL_BIN" "${args[@]}" >>"$LOG" 2>&1; then
+    t0=$(date +%s%N)
+    if "$UPSCAYL_BIN" "${args[@]}" >>"$LOG" 2>&1; then rc=0; else rc=$?; fi
+    ns=$(( $(date +%s%N) - t0 ))
+    dur="$(fmt_dur "$ns")"
+    RENDER_NS=$((RENDER_NS + ns))
+
+    if (( rc == 0 )); then
         read -r ow oh < <(magick identify -format '%w %h\n' "$out")
-        echo "  ✓ ${ow}x${oh}"
+        echo "  ✓ ${ow}x${oh} in $dur"
+        echo "[$(date '+%F %T')] done in $dur" >>"$LOG"
         DONE=$((DONE + 1))
     else
-        echo "  ✗ failed — see $LOG"
+        echo "  ✗ failed after $dur — see $LOG"
+        echo "[$(date '+%F %T')] FAILED after $dur" >>"$LOG"
         FAILED=$((FAILED + 1))
     fi
 done < <(find "$SRC" -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) -not -path "$DEST/*" -print0)
@@ -155,6 +174,10 @@ ELAPSED=$((SECONDS - START))
 echo "----------------------------------------"
 printf 'Done: %d processed, %d skipped, %d failed of %d (%dm%02ds)\n' \
     "$DONE" "$SKIPPED" "$FAILED" "$TOTAL" "$((ELAPSED / 60))" "$((ELAPSED % 60))"
+if (( DONE > 0 )); then
+    printf 'Upscaling time: %s total, avg %s/image\n' \
+        "$(fmt_dur "$RENDER_NS")" "$(fmt_dur $((RENDER_NS / DONE)))"
+fi
 echo "Next: ~/bin/normalize_art.sh \"$DEST\" ~/Downloads/normalized_art"
 
 if (( FAILED > 0 )); then exit 2; fi
