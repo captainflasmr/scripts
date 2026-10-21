@@ -106,7 +106,7 @@ REPORT="$LOG.tmp.$$"
     printf -- '------------------------------------------------------------------------\n'
 } > "$REPORT"
 
-total_pulled=0; total_conf=0; total_failed=0; total_same=0
+total_pulled=0; total_conf=0; total_failed=0; total_same=0; total_gone=0
 
 for m in "${todo[@]}"; do
     h=$(basename "$m" .tsv); h=${h#pending-}
@@ -144,12 +144,25 @@ for m in "${todo[@]}"; do
     (( ${#same[@]} > 0 )) && printf '   same     : %d file(s) unchanged\n' "${#same[@]}" >> "$REPORT"
 
     # --- pull this manifest -------------------------------------------------
-    pulled=(); failed=()
+    pulled=(); failed=(); gone=()
     pull=( "${new[@]}" "${upd[@]}" )
+    # Entries whose NAS source is already gone (renamed/deleted upstream after
+    # the manifest was written, e.g. tidy_up renames, Maildir new->cur moves,
+    # cleaned build artifacts) can never be pulled. Drop them as gone so they
+    # are archived, not retried forever.
+    present=()
+    for p in "${pull[@]}"; do
+        if [[ -e $NAS_HOME/$p ]]; then
+            present+=( "$p" )
+        else
+            gone+=( "$p" )
+        fi
+    done
+    pull=( "${present[@]}" )
     if (( ${#pull[@]} > 0 )); then
         list=$(mktemp)
         printf '%s\n' "${pull[@]}" > "$list"
-        rsync_args=( -rlpt --update --files-from="$list" )
+        rsync_args=( -rlpt --update --ignore-missing-args --files-from="$list" )
         (( DRYRUN )) && rsync_args+=( -n )
         rsync "${rsync_args[@]}" "$NAS_HOME/" "$HOME/" || true
         rm -f "$list"
@@ -159,16 +172,25 @@ for m in "${todo[@]}"; do
             for p in "${pull[@]}"; do
                 if [[ -f $HOME/$p ]] && (( $(stat -c %Y -- "$HOME/$p") >= MT[$p] - 1 )); then
                     pulled+=( "$p" )
+                elif [[ ! -e $NAS_HOME/$p ]]; then
+                    gone+=( "$p" )   # vanished on NAS between pre-check and now
                 else
                     failed+=( "$p" )
                 fi
             done
         fi
     fi
+    for p in "${gone[@]}"; do
+        printf '   gone     : %s — no longer on NAS, dropped (renamed/deleted upstream)\n' "$p" >> "$REPORT"
+    done
+    declare -A GONE_SET=()
+    for p in "${gone[@]}"; do GONE_SET[$p]=1; done
     for p in "${new[@]}"; do
+        [[ -n ${GONE_SET[$p]:-} ]] && continue
         printf '   new      : %s (%s)\n' "$p" "$(hsize "${SZ[$p]:-0}")" >> "$REPORT"
     done
     for p in "${upd[@]}"; do
+        [[ -n ${GONE_SET[$p]:-} ]] && continue
         printf '   update   : %s (%s)\n' "$p" "$(hsize "${SZ[$p]:-0}")" >> "$REPORT"
     done
     for p in "${failed[@]}"; do
@@ -176,13 +198,22 @@ for m in "${todo[@]}"; do
     done
 
     # --- archive (or keep failed entries for a retry) ------------------------
+    # Gone entries (NAS source missing) are dropped, never retried: the pusher
+    # already renamed/deleted them and do_backup --delete mirrored that. Only
+    # genuine transfer failures stay in the pending manifest.
     if (( DRYRUN == 0 )); then
         done_dir="$NAS_SYNC_DIR/done"; mkdir -p "$done_dir"
         stamp=$(date +%Y%m%d-%H%M%S)
+        [[ -n ${pushed:-} ]] || pushed=$(date -Is)
+        if (( ${#gone[@]} > 0 )); then
+            for p in "${gone[@]}"; do
+                printf '%s\t%s\t%s\n' "$p" "${SZ[$p]:-0}" "${MT[$p]:-0}"
+            done > "$done_dir/${h}-${stamp}.gone"
+        fi
         if (( ${#failed[@]} == 0 )); then
             mv "$m" "$done_dir/${h}-${stamp}.tsv"
         else
-            printf '# host=%s pushed=%s\n' "$h" "$(date -Is)" > "$m.tmp.$$"
+            printf '# host=%s pushed=%s\n' "$h" "$pushed" > "$m.tmp.$$"
             for p in "${failed[@]}"; do
                 printf '%s\t%s\t%s\n' "$p" "${SZ[$p]:-0}" "${MT[$p]:-0}" >> "$m.tmp.$$"
             done
@@ -200,17 +231,18 @@ for m in "${todo[@]}"; do
     total_conf=$(( total_conf + ${#conf[@]} ))
     total_failed=$(( total_failed + ${#failed[@]} ))
     total_same=$(( total_same + ${#same[@]} ))
+    total_gone=$(( total_gone + ${#gone[@]} ))
 done
 
 {
     printf -- '------------------------------------------------------------------------\n'
-    printf 'Summary: %d pulled, %d conflict(s) kept local, %d failed, %d unchanged.\n' \
-           "$total_pulled" "$total_conf" "$total_failed" "$total_same"
+    printf 'Summary: %d pulled, %d conflict(s) kept local, %d failed, %d unchanged, %d gone (dropped, missing on NAS).\n' \
+           "$total_pulled" "$total_conf" "$total_failed" "$total_same" "$total_gone"
 } >> "$REPORT"
 mv "$REPORT" "$LOG"
 (( QUIET )) || cat "$LOG"
 
-if (( TERMINAL && total_pulled + total_conf + total_failed > 0 )) &&
+if (( TERMINAL && total_pulled + total_conf + total_failed + total_gone > 0 )) &&
    [[ -n ${WAYLAND_DISPLAY:-}${DISPLAY:-} ]]; then
     open_report_terminal "$LOG"
 fi
