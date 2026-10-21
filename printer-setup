@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+#
+# printer-setup - install and configure the Epson XP-970 over IPP so GIMP,
+#                 GTK apps and lp(1) can actually print (and offer A3 borderless).
+#
+# WHY THIS EXISTS
+#   The CUPS scheduler was disabled on this machine and /etc/cups/printers.conf
+#   was empty, so there was no print queue at all. GIMP's GTK print dialog then
+#   sits forever on "Getting printer information..." because it is waiting for a
+#   CUPS reply that never comes.
+#
+#   The printer itself is fine: an EPSON XP-970 Series, reachable over mDNS as
+#   EPSON7A9D14.local (192.168.7.107) with a driverless IPP endpoint at
+#   ipp://EPSON7A9D14.local:631/ipp/print. It advertises iso_a3_297x420mm and
+#   zero top/left/right/bottom margins, which is what "A3 borderless" needs.
+#
+#   This script:
+#     1. enables + starts cups.socket (socket activation; no daemon at boot)
+#     2. creates the queue "EPSON_XP-970" using the driverless PPD, so the
+#        queue reports A3.Borderless directly to the GTK print dialog
+#     3. sets the default media size and prints a test page (optional)
+#
+# USAGE
+#   printer-setup                 Install/repair the queue and enable CUPS
+#   printer-setup --test          ...and print a test page afterwards
+#   printer-setup --borderless    Set the queue default to A3 borderless
+#   printer-setup --remove        Delete the queue
+#   printer-setup -n | --dry-run  Show what would run, change nothing
+#   printer-setup -h | --help     Show this help
+#
+# NOTE
+#   No root needed: the CUPS SystemGroup is "lp" and this user is in it, so
+#   lpadmin works unprivileged; systemctl goes through polkit. Re-run any time;
+#   it is idempotent and preserves the media size you have chosen.
+#
+set -euo pipefail
+
+BOLD='\033[1m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
+
+QUEUE="EPSON_XP-970"
+URI="ipp://EPSON7A9D14.local:631/ipp/print"
+PPD="/etc/cups/ppd/${QUEUE}.ppd"
+
+TEST_PAGE=""
+BORDERLESS=""
+REMOVE=""
+DRY_RUN=""
+
+usage () {
+    awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next }
+         NR > 1 && !/^#/ { exit }' "$0"
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        --test)        TEST_PAGE=1 ;;
+        --borderless)  BORDERLESS=1 ;;
+        --remove)      REMOVE=1 ;;
+        -n|--dry-run)  DRY_RUN=1 ;;
+        -h|--help)     usage; exit 0 ;;
+        *) echo "Unknown option: $arg" >&2; usage; exit 1 ;;
+    esac
+done
+
+run () {
+    if [[ -n "$DRY_RUN" ]]; then
+        echo "  [dry-run] $*"
+    else
+        "$@"
+    fi
+}
+
+say () { echo -e "${BOLD}==>${NC} $*"; }
+ok  () { echo -e "${GREEN}  ok${NC} $*"; }
+warn() { echo -e "${YELLOW}  !${NC} $*"; }
+die () { echo -e "${RED}error:${NC} $*" >&2; exit 1; }
+
+# No root check: on Arch the CUPS SystemGroup is "lp", and this user is in it,
+# so lpadmin works unprivileged. systemctl enable/start goes through polkit.
+
+# --- 1. CUPS scheduler ------------------------------------------------------
+say "Enabling the CUPS scheduler"
+run systemctl enable --now cups.socket
+run systemctl start cups.service 2>/dev/null || true
+
+if [[ -z "$DRY_RUN" ]]; then
+    # Socket activation takes a moment; poll instead of sleeping blindly.
+    # NOTE: lpstat -r exits 0 even when CUPS is down, so test its output.
+    cups_up () { lpstat -r 2>/dev/null | grep -q 'is running'; }
+    for _ in $(seq 1 20); do
+        cups_up && break
+        sleep 0.25
+    done
+    cups_up || die "CUPS did not come up; check: journalctl -u cups"
+    ok "scheduler running: $(lpstat -r)"
+fi
+
+# --- 2. remove ---------------------------------------------------------------
+if [[ -n "$REMOVE" ]]; then
+    say "Removing queue $QUEUE"
+    run lpadmin -x "$QUEUE" || warn "queue did not exist"
+    ok "removed"
+    exit 0
+fi
+
+# --- 3. the printer must be reachable ---------------------------------------
+say "Checking the printer at $URI"
+if [[ -z "$DRY_RUN" ]]; then
+    if timeout 15 ipptool -t "$URI" /usr/share/cups/ipptool/get-printer-attributes.test \
+            >/dev/null 2>&1; then
+        ok "printer answers IPP"
+    else
+        die "no IPP reply from $URI - is the printer on and on the same network?"
+    fi
+fi
+
+# --- 4. create/repair the queue ---------------------------------------------
+say "Creating queue $QUEUE"
+EXISTED=""
+if lpstat -p "$QUEUE" >/dev/null 2>&1; then
+    EXISTED=1
+    ok "queue already exists, updating it in place"
+fi
+
+# Remember the current PageSize default before touching the PPD: "lpadmin -m
+# everywhere" regenerates the PPD, which resets per-queue defaults to the
+# printer's own (A4). Without this, re-running the script would silently undo
+# an A3 borderless default the user had chosen.
+PREV_SIZE=""
+if [[ -n "$EXISTED" && -z "$DRY_RUN" ]]; then
+    PREV_SIZE=$(lpoptions -p "$QUEUE" -l 2>/dev/null \
+        | grep -i '^PageSize' | grep -o '\*[A-Za-z0-9._-]*' | tr -d '*' | head -1)
+fi
+
+# Driverless PPD: makes the queue advertise the printer's own capabilities,
+# including A3.Borderless, instead of a generic every-printer PPD.
+# lpadmin updates an existing queue in place, so re-running is harmless.
+run lpadmin -p "$QUEUE" \
+    -v "$URI" \
+    -m everywhere \
+    -E \
+    -D "EPSON XP-970 Series" \
+    -L "Network" \
+    -o printer-is-shared=false
+
+run lpadmin -d "$QUEUE"
+ok "queue installed and set as default"
+
+# --- 5. media default --------------------------------------------------------
+# Borderless is NOT a separate margin option on this queue: the driverless PPD
+# encodes it in the PageSize choice itself. "A3.Borderless" has an
+# ImageableArea of "0 0 841.889763779528 1190.551181102362" (full bleed),
+# while plain "A3" has 8.5pt margins. Setting media-top-margin etc. here would
+# be rejected/ignored, so only PageSize is set.
+if [[ -n "$BORDERLESS" ]]; then
+    say "Setting the queue default to A3 borderless"
+    run lpadmin -p "$QUEUE" -o PageSize=A3.Borderless
+    ok "default media is now A3.Borderless (zero-margin ImageableArea)"
+elif [[ -n "$PREV_SIZE" ]]; then
+    say "Restoring the previous media size ($PREV_SIZE)"
+    run lpadmin -p "$QUEUE" -o "PageSize=$PREV_SIZE"
+    ok "media default preserved"
+fi
+
+# --- 6. show what GIMP will see ---------------------------------------------
+if [[ -z "$DRY_RUN" ]]; then
+    say "Queue options as the print dialog sees them"
+    lpoptions -p "$QUEUE" -l 2>/dev/null | grep -i -E 'PageSize|Borderless' | head -10 || true
+    echo
+    lpstat -p "$QUEUE" -o 2>/dev/null || true
+fi
+
+# --- 7. test page ------------------------------------------------------------
+if [[ -n "$TEST_PAGE" ]]; then
+    say "Printing a test page"
+    # A3 borderless needs the rear feed; warn rather than silently pick a tray.
+    warn "load A3 paper and select the correct source before printing"
+    run lp -d "$QUEUE" -o PageSize=A3.Borderless /usr/share/cups/data/testprint
+    ok "job submitted; watch it with: lpstat -o"
+fi
+
+echo
+say "Done"
+echo "  In GIMP: File > Print, choose '$QUEUE', then set Media Size to"
+echo "  'A3 (Borderless)'. If the dialog still says 'Getting printer"
+echo "  information...', restart GIMP - it caches the old, empty printer list."
