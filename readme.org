@@ -65,7 +65,8 @@ Below is a brief description of each script and its functionality.
 - *screenshot.sh*: Takes a screenshot (auto-detects X11 or Wayland).
 - *screenshot_wayland.sh*: Wayland screenshot using slurp for region selection and grim for capture.
 - *screenshot_wayland_text.sh*: Takes a Wayland screenshot, runs OCR via tesseract, and copies the recognised text to the clipboard.
-- *screen-record.sh*: Starts a screen recording session.
+- *screen-record.sh*: Toggles a screen recording session. On Wayland it shows a short overlay countdown above fullscreen windows before starting wf-recorder (so the overlay is never captured), then a saved/failed overlay after stopping.
+- *recording-overlay.py*: Layer-shell overlay helper used by screen-record.sh for the pre-roll countdown and the saved/error messages (GTK3 + gtk-layer-shell).
 - *screen-record-check-status.sh*: Reports whether a screen recording is currently in progress.
 - *top-and-tail.sh*: Trims a specified number of seconds from the start and end of a video file.
 
