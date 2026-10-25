@@ -30,7 +30,8 @@ On the stick (after =refresh-usb.sh=):
 ├── setup-ventoy.sh       partition a blank stick (Ventoy + ext4 payload)
 ├── lib/                  common.sh, pkg.sh, steps.sh, payload.sh,
 │                         home-include.txt, home-exclude.txt (the shared lists)
-├── packages/             arch-pacman / arch-aur / mint-apt / flatpak / arch-remove
+├── packages/             arch-pacman / arch-aur / mint-apt / flatpak /
+│                         arch-remove / vscode-extensions
 ├── home/                 curated dotfiles + bin + .config
 ├── secrets.tar.gz.gpg    gpg-symmetric-encrypted .ssh/.gnupg/.authinfo
 └── data/                 DCIM/ source/ wallpaper/
@@ -89,7 +90,7 @@ Add =--check= to setup-ventoy.sh to run the f3probe flash verification (opt-in).
    #+end_src
 3. Enter the gpg passphrase when prompted (for secrets).
 
-Order of operations: detect distro → system update → install packages (pacman+AUR / apt) → flatpaks → restore home → restore secrets → restore data → default shell (fish) → user groups → optional NAS-mount cron → optional Samsung backlight GRUB fix.
+Order of operations: detect distro → system update → install packages (pacman+AUR / apt) → flatpaks → VS Code extensions → restore home → restore secrets → restore data → default shell (fish) → user groups → optional NAS-mount cron → optional Samsung backlight GRUB fix.
 
 ** Useful flags
 | =--yes=           | assume yes to prompts               |
@@ -182,6 +183,7 @@ All three directions read the same definitions in =lib/=, so nothing drifts:
 * Editing what gets installed / copied
 
 - *Packages*: edit =packages/*.txt= — one package per line, =#= comments a line out.
+- *VS Code extensions*: =packages/vscode-extensions.txt= is generated — run =vscode-extensions refresh=, or let =do_backup= refresh it before every push. =install.sh= reinstalls the pinned set from the Marketplace and falls back to the latest release if a pin has been withdrawn. Extension *binaries* are never backed up: the =~/.vscode/extensions= tree is ~350 MB, platform-specific, and full of obsolete versions. Comment a line out (=# publisher.ext@1.2.3=) to keep an extension here but leave it out of the rebuilt set.
 - *What gets backed up / restored*: see "single source of truth" above.
 
 * Notes / caveats

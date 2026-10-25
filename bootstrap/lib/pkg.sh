@@ -96,6 +96,36 @@ pkg_install_flatpak() {
     done <<< "$list"
 }
 
+# --- VS Code extensions ---------------------------------------------------
+# Reinstall a pinned id@version list through the Marketplace. The extension
+# *binaries* are machine/platform-specific (and VS Code keeps stale versions
+# around), so only this list is backed up. A pin the Marketplace no longer
+# serves falls back to that ID's current release so the step still ends with a
+# working set.
+pkg_install_vscode_extensions() {
+    local list; list=$(_read_list "$1")
+    [[ -z $list ]] && return 0
+    if ! command -v code &>/dev/null; then
+        warn "code CLI not installed, skipping VS Code extensions"
+        return 0
+    fi
+    local installed; installed=$(code --list-extensions --show-versions 2>/dev/null || true)
+    local spec id
+    while IFS= read -r spec; do
+        [[ -z $spec ]] && continue
+        id=${spec%@*}
+        if grep -qixF -- "$spec" <<< "$installed"; then
+            info "skip (installed): $spec"
+            continue
+        fi
+        info "code --install-extension $spec"
+        code --install-extension "$spec" --force >/dev/null 2>&1 && continue
+        warn "pinned version unavailable: $spec; installing current $id"
+        code --install-extension "$id" --force >/dev/null 2>&1 \
+            || warn "FAILED: $id"
+    done <<< "$list"
+}
+
 # pkg_remove <listfile>  (uninstall unwanted defaults)
 pkg_remove() {
     local list; list=$(_read_list "$1")

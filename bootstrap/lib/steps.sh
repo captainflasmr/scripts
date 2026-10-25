@@ -51,6 +51,12 @@ step_restore_data() {
     done
 }
 
+# --- VS Code extensions (pinned list -> Marketplace) ---------------------
+step_vscode_extensions() {
+    section "Installing VS Code extensions"
+    pkg_install_vscode_extensions vscode-extensions.txt
+}
+
 # --- default shell -> fish ------------------------------------------------
 step_set_shell() {
     section "Default shell"

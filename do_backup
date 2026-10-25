@@ -525,6 +525,15 @@ function do_backup_home ()
 
 cd "$HOME/nas" || exit
 
+# Snapshot the installed VS Code extension set before any copy runs. The pinned
+# list in bootstrap/packages/ (not the ~350 MB of platform-specific extension
+# binaries) is what rides along inside ~/bin and is reinstalled by install.sh.
+# Non-fatal: a stale list is better than a failed backup.
+if [[ -x $HOME/bin/vscode-extensions ]]; then
+    "$HOME/bin/vscode-extensions" refresh --quiet || \
+        echo "WARNING: VS Code extension list refresh failed; keeping previous list"
+fi
+
 if [[ $# -gt 0 ]]; then
     if [[ $1 == "home" ]]; then
         do_backup_home

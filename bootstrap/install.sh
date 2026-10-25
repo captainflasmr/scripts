@@ -15,6 +15,7 @@
 #   --no-data        skip restoring bulk data (DCIM/source/wallpaper)
 #   --no-secrets     skip restoring .ssh/.gnupg/.authinfo
 #   --no-packages    skip all package installation
+#   --no-extensions  skip reinstalling the pinned VS Code extensions
 #   --packages-only  only install packages, nothing else
 #   --remove         also remove the unwanted-defaults list (arch-remove.txt)
 #   --step <name>    run a single step function and exit (for testing)
@@ -31,13 +32,14 @@ source "$BOOTSTRAP_DIR/lib/pkg.sh"
 source "$BOOTSTRAP_DIR/lib/steps.sh"
 
 # --- args -----------------------------------------------------------------
-ASSUME_YES=0; DO_DATA=1; DO_SECRETS=1; DO_PACKAGES=1; PACKAGES_ONLY=0; DO_REMOVE=0; RUN_STEP=
+ASSUME_YES=0; DO_DATA=1; DO_SECRETS=1; DO_PACKAGES=1; DO_EXTENSIONS=1; PACKAGES_ONLY=0; DO_REMOVE=0; RUN_STEP=
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --yes|-y)       ASSUME_YES=1 ;;
         --no-data)      DO_DATA=0 ;;
         --no-secrets)   DO_SECRETS=0 ;;
         --no-packages)  DO_PACKAGES=0 ;;
+        --no-extensions) DO_EXTENSIONS=0 ;;
         --packages-only) PACKAGES_ONLY=1 ;;
         --remove)       DO_REMOVE=1 ;;
         --step)         [[ -n ${2:-} ]] || die "--step requires a function name"; RUN_STEP=$2; shift ;;
@@ -80,6 +82,7 @@ if [[ $DO_PACKAGES == 1 ]]; then
     esac
     section "Installing flatpaks"
     pkg_install_flatpak flatpak.txt
+    [[ $DO_EXTENSIONS == 1 ]] && step_vscode_extensions
 fi
 
 if [[ $PACKAGES_ONLY == 1 ]]; then step_done; exit 0; fi
