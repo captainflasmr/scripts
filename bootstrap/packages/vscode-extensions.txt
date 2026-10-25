@@ -1,0 +1,22 @@
+# vscode-extensions.txt - VS Code extensions restored by install.sh, one
+# "publisher.extension@version" per line. GENERATED: refresh with
+#   vscode-extensions refresh
+# (do_backup runs that automatically before each push). No extension binaries
+# are backed up; install.sh reinstalls this set from the Marketplace. If a pin
+# is no longer published, install falls back to the current release.
+#
+# Comment a line out as "# publisher.extension@version" to keep the extension
+# installed on this machine but leave it out of the rebuilt set.
+alefragnani.bookmarks@14.1.1
+jcs090218.ellsp@0.1.3
+kshartman.emacs-unified@1.3.1
+monadica.elisp-vscode-grammar@0.0.1
+ms-azuretools.vscode-containers@2.5.3
+realdestroyer.org-vscode@2.4.2
+redhat.java@1.55.0
+vscjava.vscode-gradle@3.18.1
+vscjava.vscode-java-debug@0.60.0
+vscjava.vscode-java-dependency@0.27.7
+vscjava.vscode-java-pack@0.31.2
+vscjava.vscode-java-test@0.47.0
+vscjava.vscode-maven@0.46.0

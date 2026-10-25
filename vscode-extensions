@@ -1,0 +1,144 @@
+#!/bin/bash
+# vscode-extensions - keep the pinned VS Code extension list (which rides
+# along in ~/bin on every do_backup push and on the USB stick) in sync with
+# what is installed here, and reinstall it on another machine.
+#
+#   vscode-extensions            show tracked vs installed (default)
+#   vscode-extensions refresh    rewrite bootstrap/packages/vscode-extensions.txt
+#   vscode-extensions install    install the pinned set from the Marketplace
+#   vscode-extensions list       print the pinned set to stdout
+#
+# Only the list is portable. Extension directories under ~/.vscode/extensions
+# are platform-specific and include stale versions, so they are not backed up.
+set -uo pipefail
+
+SELF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+BOOTSTRAP_DIR="${BOOTSTRAP_DIR:-$SELF_DIR/bootstrap}"
+LIST_FILE="$BOOTSTRAP_DIR/packages/vscode-extensions.txt"
+CODE_BIN="${CODE_BIN:-code}"
+
+header() {
+    cat <<'EOF'
+# vscode-extensions.txt - VS Code extensions restored by install.sh, one
+# "publisher.extension@version" per line. GENERATED: refresh with
+#   vscode-extensions refresh
+# (do_backup runs that automatically before each push). No extension binaries
+# are backed up; install.sh reinstalls this set from the Marketplace. If a pin
+# is no longer published, install falls back to the current release.
+#
+# Comment a line out as "# publisher.extension@version" to keep the extension
+# installed on this machine but leave it out of the rebuilt set.
+EOF
+}
+
+need_code() {
+    command -v "$CODE_BIN" >/dev/null 2>&1 && return 0
+    echo "vscode-extensions: '$CODE_BIN' not found" >&2
+    return 1
+}
+
+# installed extensions as id@version, one per line (may be empty)
+list_installed() {
+    "$CODE_BIN" --list-extensions --show-versions 2>/dev/null \
+        | grep -E '^[^[:space:]@]+@[^[:space:]]+$' || true
+}
+
+cmd_refresh() {
+    local quiet=0
+    [[ ${1:-} == --quiet ]] && quiet=1
+    need_code || return 1
+
+    local installed
+    installed=$(list_installed | LC_ALL=C sort -u)
+    if [[ -z $installed ]]; then
+        echo "vscode-extensions: no installed extensions found; keeping existing list" >&2
+        return 1
+    fi
+
+    # Honour extensions commented out in the current list: they stay installed
+    # here but are not written back, so they won't be restored elsewhere.
+    local -A ignore=()
+    if [[ -r $LIST_FILE ]]; then
+        local id
+        while IFS= read -r id; do
+            [[ -n $id ]] && ignore["$id"]=1
+        done < <(sed -nE 's/^#[[:space:]]*([A-Za-z0-9_.-]+\.[A-Za-z0-9_.-]+)@[^[:space:]]*$/\1/p' "$LIST_FILE")
+    fi
+
+    local tmp line count=0
+    tmp=$(mktemp "${LIST_FILE}.XXXXXX") || return 1
+    {
+        header
+        while IFS= read -r line; do
+            [[ -z $line ]] && continue
+            [[ -n ${ignore[${line%@*}]:-} ]] && continue
+            printf '%s\n' "$line"
+            count=$(( count + 1 ))
+        done <<< "$installed"
+    } > "$tmp"
+
+    if [[ -r $LIST_FILE ]] && cmp -s "$tmp" "$LIST_FILE"; then
+        rm -f "$tmp"
+        (( quiet )) || echo "vscode-extensions: no change ($count tracked)"
+        return 0
+    fi
+    mv "$tmp" "$LIST_FILE" || return 1
+    (( quiet )) || echo "vscode-extensions: updated $LIST_FILE ($count tracked)"
+}
+
+cmd_install() {
+    if [[ ! -r $BOOTSTRAP_DIR/lib/pkg.sh ]]; then
+        echo "vscode-extensions: bootstrap libs not found under $BOOTSTRAP_DIR" >&2
+        return 1
+    fi
+    # shellcheck source=bootstrap/lib/common.sh
+    source "$BOOTSTRAP_DIR/lib/common.sh"
+    # shellcheck source=bootstrap/lib/pkg.sh
+    source "$BOOTSTRAP_DIR/lib/pkg.sh"
+    PKG_DIR="$BOOTSTRAP_DIR/packages"
+    pkg_install_vscode_extensions vscode-extensions.txt
+}
+
+cmd_list() {
+    [[ -r $LIST_FILE ]] || { echo "vscode-extensions: no list at $LIST_FILE" >&2; return 1; }
+    sed -E '/^[[:space:]]*(#|$)/d' "$LIST_FILE"
+}
+
+cmd_status() {
+    need_code || return 1
+    [[ -r $LIST_FILE ]] || { echo "vscode-extensions: no list at $LIST_FILE" >&2; return 1; }
+
+    local details
+    details=$(awk -F@ '
+        FILENAME == ARGV[1] {
+            if ($0 !~ /^[[:space:]]*(#|$)/) { pin[$1] = $2; pline[$1] = $0 }
+            next
+        }
+        NF { ins[$1] = $2; iline[$1] = $0 }
+        END {
+            for (id in pin) {
+                if (!(id in ins))              printf "missing    %s\n", pline[id]
+                else if (pin[id] != ins[id])   printf "version    %s (tracked %s, installed %s)\n", id, pin[id], ins[id]
+            }
+            for (id in ins)
+                if (!(id in pin))              printf "untracked  %s\n", iline[id]
+        }' "$LIST_FILE" <(list_installed))
+
+    if [[ -n $details ]]; then
+        printf '%s\n' "$details" | LC_ALL=C sort
+        echo
+    fi
+    printf 'tracked %d, installed %d\n' \
+        "$(sed -E '/^[[:space:]]*(#|$)/d' "$LIST_FILE" | wc -l)" \
+        "$(list_installed | wc -l)"
+}
+
+case "${1:-status}" in
+    refresh) shift; cmd_refresh "$@" ;;
+    install) cmd_install ;;
+    list)    cmd_list ;;
+    status)  cmd_status ;;
+    -h|--help|help)
+        sed -n '2,/^set /{/^set /d;s/^# \{0,1\}//;p}' "$0" ;;
+    *) echo "vscode-extensions: unknown action '$1' (try --help)" >&2; exit 1 ;;
+esac
