@@ -12,8 +12,7 @@ fi
 # repo (also drives refresh-usb.sh and sync-from-nas.sh). See lib/payload.sh.
 INC_FILE="$HOME/bin/bootstrap/lib/home-include.txt"
 EXC_FILE="$HOME/bin/bootstrap/lib/home-exclude.txt"
-# Git-ignore handling (GIT_INCLUDE_OVERRIDES + build_gitignore_excludes) is
-# shared with sync-to-nas.sh so a pushed change set matches a do_backup set.
+# Git-ignore handling (GIT_INCLUDE_OVERRIDES + build_gitignore_excludes).
 GITIGNORE_LIB="$HOME/bin/bootstrap/lib/gitignore.sh"
 if [[ ! -r $GITIGNORE_LIB ]]; then
     echo "ERROR: $GITIGNORE_LIB missing (bootstrap repo incomplete?)" >&2
@@ -416,14 +415,6 @@ function do_it ()
 
 function backup_home ()
 {
-    # Merge any changes pushed up from another machine via the NAS BEFORE we
-    # overwrite the NAS, so pending files can't be clobbered (or --delete'd) by
-    # this push. No-op when the puller isn't installed or nothing is pending.
-    if [[ -x $HOME/bin/bootstrap/nas-pending-pull.sh ]]; then
-        "$HOME/bin/bootstrap/nas-pending-pull.sh" --quiet || \
-            echo "WARNING: pending NAS pull failed; continuing with backup"
-    fi
-
     DRY=0
     INC=1
     TRASH=0

@@ -8,7 +8,7 @@
 #                  do_backup mirrors to the NAS and 'sync-from-nas --full' pulls
 #                  back. Plain rsync --files-from / --exclude-from files so rsync
 #                  consumes them directly; this script also reads them into the
-#                  HOME_FULL / HOME_EXCLUDES arrays for callers that want bash.
+#                  HOME_EXCLUDES array for callers that want bash.
 #   • Curated    - the small, deliberate subset that goes on a portable USB
 #                  install stick (refresh-usb.sh). Intentionally omits the big,
 #                  machine-specific dirs (.local, Videos, Applications, …).
@@ -17,15 +17,6 @@
 PAYLOAD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOME_INCLUDE_FILE="$PAYLOAD_DIR/home-include.txt"   # rsync --files-from
 HOME_EXCLUDE_FILE="$PAYLOAD_DIR/home-exclude.txt"   # rsync --exclude-from
-
-# FULL home as a bash array (paths, comments/blanks stripped).
-HOME_FULL=()
-if [[ -r $HOME_INCLUDE_FILE ]]; then
-    while IFS= read -r _l; do
-        [[ -z $_l || $_l == \#* ]] && continue
-        HOME_FULL+=("$_l")
-    done < "$HOME_INCLUDE_FILE"
-fi
 
 # Exclusions as ready-made rsync args: HOME_EXCLUDES=(--exclude P --exclude Q …).
 # Equivalent to --exclude-from=$HOME_EXCLUDE_FILE, for callers that build an

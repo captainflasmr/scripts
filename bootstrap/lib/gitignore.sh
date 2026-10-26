@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# gitignore.sh - git-ignore handling shared by do_backup (push) and
-# sync-to-nas.sh (push), extracted from do_backup so both push directions agree
-# on what "the data set" means (same source of truth idea as payload.sh).
+# gitignore.sh - git-ignore handling for do_backup's push, extracted from
+# do_backup so the filters follow the same source-of-truth idea as payload.sh.
 #
-# Sourced by do_backup and sync-to-nas.sh. Requires git (optional: functions
-# degrade to "no exclusions" when it is missing) and bash.
+# Sourced by do_backup. Requires git (optional: functions degrade to "no
+# exclusions" when it is missing) and bash.
 
 # rsync --include patterns for paths that are git-ignored (by nested .gitignore)
 # but should still be backed up. Inserted before --exclude-from=GIT_EXCLUDE_FILE

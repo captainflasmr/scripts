@@ -56,7 +56,7 @@
 .emacs.d/ollama-buddy
 .local/bin/claude
 .local/share/NuGet
-# Sync bookkeeping for sync-to-nas / nas-pending-pull is machine-local
+# Legacy state from the removed nas-watch/pending-pull flow is machine-local
 # (dirty journal, logs); never mirror it between machines.
 .local/state/nas-sync
 .local/share/claude
