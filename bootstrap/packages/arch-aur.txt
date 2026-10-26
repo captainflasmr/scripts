@@ -18,6 +18,7 @@ steghide
 surfshark-client
 sway-audio-idle-inhibit-git
 swww
+waybound
 wl-color-picker
 wl-screenrec
 xremap-wlroots-bin
