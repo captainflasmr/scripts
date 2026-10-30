@@ -59,6 +59,9 @@ Below is a brief description of each script and its functionality.
   live in =bootstrap/lib/home-include.txt= and
   =bootstrap/lib/home-exclude.txt= — the shared single source of truth that also
   drives =bootstrap/sync-from-nas.sh= (pull) and =bootstrap/refresh-usb.sh= (stick).
+  On exFAT/FAT/NTFS targets (which reject the =:= in Maildir filenames) the
+  Maildir tree is skipped and the weekly =Maildir.tar.gz= is copied instead;
+  use =ext-drive-setup= to reformat a drive to ext4 if you need the live tree.
 
 ** Screenshot & Screen Recording
 

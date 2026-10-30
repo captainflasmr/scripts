@@ -325,6 +325,30 @@ function run_sharded_rsync ()
     done
 }
 
+# Filesystems that reject characters which are legal on POSIX (notably the ':'
+# in Maildir's "...:2,S" flags). rsync exits 23 on every such file, so on these
+# targets we skip Maildir trees and carry Maildir.tar.gz instead.
+function dest_rejects_posix_names ()
+{
+    local fstype
+    fstype=$(findmnt -no FSTYPE --target "$1" 2>/dev/null) || return 1
+    case $fstype in
+        exfat|vfat|msdos|ntfs|ntfs3|fuseblk|cifs|smb3) return 0 ;;
+    esac
+    return 1
+}
+
+# Relative path of the Maildir tree under $SRC, if there is one. Handles the
+# two layouts do_backup uses: home ($SRC/Maildir) and nas ($SRC/Home/Maildir).
+function maildir_rel ()
+{
+    if [[ -d "$SRC/Maildir" ]]; then
+        echo "Maildir"
+    elif [[ -d "$SRC/Home/Maildir" ]]; then
+        echo "Home/Maildir"
+    fi
+}
+
 function do_it ()
 {
     # Enumerate git-ignored paths under SRC by asking git itself (full gitignore
@@ -366,6 +390,25 @@ function do_it ()
         return 1
     fi
 
+    # exFAT/FAT/NTFS cannot store Maildir's ':' filenames, so every message
+    # would fail with rsync code 23. Skip the tree and, for the home/nas sets,
+    # carry the weekly Maildir.tar.gz (created by backup_home) instead.
+    local maildir_path=""
+    if dest_rejects_posix_names "$DST"; then
+        RSYNC_CMD+=(--exclude 'Maildir')
+        if [[ ${MAIL_ARCHIVE:-1} == 1 && ($SRC == "$HOME" || $SRC == "$HOME/nas") ]]; then
+            maildir_path=$(maildir_rel)
+        fi
+        echo
+        echo "NOTE: $DST is on $(findmnt -no FSTYPE --target "$DST") which cannot store"
+        echo "      Maildir filenames (they contain ':'). Skipping Maildir."
+        if [[ -n $maildir_path ]]; then
+            echo "      Maildir.tar.gz will be copied instead."
+            RSYNC_CMD+=(--filter='P Maildir.tar.gz')
+        fi
+        echo
+    fi
+
     if [[ $DRY == 1 ]]; then
         RSYNC_CMD+=(--dry-run)
     fi
@@ -396,14 +439,33 @@ function do_it ()
         "${RSYNC_CMD[@]}" | stdbuf -oL grep -v "$FILTERSTR"
     fi
 
+    if [[ -n $maildir_path ]]; then
+        local tar_src="$HOME/Maildir.tar.gz"
+        local tar_dir tar_dst
+        tar_dir=$(dirname "$maildir_path")
+        if [[ $tar_dir == "." ]]; then
+            tar_dst="$DST/Maildir.tar.gz"
+        else
+            tar_dst="$DST/$tar_dir/Maildir.tar.gz"
+        fi
+        if [[ -f $tar_src ]]; then
+            echo "Copying $tar_src -> $tar_dst"
+            rsync -t --no-perms "$tar_src" "$tar_dst" || \
+                echo "WARNING: failed to copy Maildir archive to $tar_dst"
+        else
+            echo "WARNING: $tar_src not found; Maildir is NOT backed up to this target."
+            echo "         Run 'do_backup home' on a 7th/14th/21st/28th to create it."
+        fi
+    fi
+
     if [[ $SANITY == 1 ]]; then
         echo "Sanity Check $SRC -> $DST ...."
         S1=$(mktemp)
         S2=$(mktemp)
         cd "$SRC" || return 1
-        ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" --ignore="lost+found" > "$S1"
+        ls -R --ignore="OneDrive" --ignore="Maildir" --ignore="Maildir.tar.gz" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" --ignore="lost+found" > "$S1"
         cd "$DST" || return 1
-        ls -R --ignore="OneDrive" --ignore="Maildir" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" --ignore="lost+found" > "$S2"
+        ls -R --ignore="OneDrive" --ignore="Maildir" --ignore="Maildir.tar.gz" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" --ignore="lost+found" > "$S2"
         diff --side-by-side --suppress-common-lines "$S1" "$S2"
         rm -f "$S1" "$S2"
     fi
@@ -568,6 +630,9 @@ do
                 --exclude 'Videos' --exclude 'KritaRecorder' --exclude 'Reference'
                 --exclude 'music'
             )
+            # The Ventoy stick is an installer, not a mail backup: never add
+            # the ~911 MB Maildir archive to it.
+            MAIL_ARCHIVE=0
             SRC="$HOME"
             DST="$BASE/Ventoy/Home"
             do_it

@@ -18,6 +18,13 @@ GIT_INCLUDE_OVERRIDES=(
     '/.config/mozilla/'
     '/.config/mozilla/**'
     '/.emacs.d/offline-packages/local-packages/**'
+    # ~/.emacs.d is a whitelist repo ('*' then '!path'). Emacs-vanilla and
+    # Emacs-DIYer are separate git repos kept out of it, but they are still
+    # config we want on the NAS, so re-include them here.
+    '/.emacs.d/Emacs-vanilla/'
+    '/.emacs.d/Emacs-vanilla/**'
+    '/.emacs.d/Emacs-DIYer/'
+    '/.emacs.d/Emacs-DIYer/**'
     # ~/.config is a git dotfiles repo whose .gitignore is '*' then '!dir/'.
     # '!dir/' re-includes the directory entry but NOT its contents, so when the
     # contents are untracked, 'git ls-files --ignored --directory' (run by
