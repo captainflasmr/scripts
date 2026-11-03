@@ -12,6 +12,9 @@ fi
 # repo (also drives refresh-usb.sh and sync-from-nas.sh). See lib/payload.sh.
 INC_FILE="$HOME/bin/bootstrap/lib/home-include.txt"
 EXC_FILE="$HOME/bin/bootstrap/lib/home-exclude.txt"
+# Explicit subset of ~/nas for the quick "essentials" first pass (skips the
+# huge DVD/Archive trees). See backup_nas_essentials().
+ESSENTIAL_INC_FILE="$HOME/bin/bootstrap/lib/nas-essential.txt"
 # Git-ignore handling (GIT_INCLUDE_OVERRIDES + build_gitignore_excludes).
 GITIGNORE_LIB="$HOME/bin/bootstrap/lib/gitignore.sh"
 if [[ ! -r $GITIGNORE_LIB ]]; then
@@ -293,8 +296,8 @@ function run_sharded_rsync ()
     SHARD_DIR=$(mktemp -d -t do_backup-shards.XXXXXX)
     if [[ -z "$SHARD_DIR" || ! -d "$SHARD_DIR" ]] || ! build_shards; then
         echo "sharding unavailable; running serial"
-        RSYNC_CMD+=(--files-from="${INC_FILE}" "${SRC}/" "${DST}/")
-        "${RSYNC_CMD[@]}" | stdbuf -oL grep -v "$FILTERSTR"
+        local -a run_cmd=("${RSYNC_CMD[@]}" --files-from="${INC_FILE}" "${SRC}/" "${DST}/")
+        "${run_cmd[@]}" | stdbuf -oL grep -v "$FILTERSTR"
         return
     fi
 
@@ -425,18 +428,19 @@ function do_it ()
     if [[ $INC == 1 && $JOBS -gt 1 ]]; then
         run_sharded_rsync
     else
+        local -a run_cmd=("${RSYNC_CMD[@]}")
         if [[ $INC == 1 ]]; then
-            RSYNC_CMD+=(--files-from="${INC_FILE}")
+            run_cmd+=(--files-from="${INC_FILE}")
         elif [[ $JOBS -gt 1 ]]; then
             echo
-            echo "note: parallel jobs only apply to include-list backups (home, usb-home, ventoy);"
+            echo "note: parallel jobs only apply to include-list backups (home, usb-home, ventoy, essentials);"
             echo "      running serial for this target."
             echo
         fi
-        RSYNC_CMD+=("${SRC}/" "${DST}/")
-        echo "${RSYNC_CMD[*]}"
+        run_cmd+=("${SRC}/" "${DST}/")
+        echo "${run_cmd[*]}"
 
-        "${RSYNC_CMD[@]}" | stdbuf -oL grep -v "$FILTERSTR"
+        "${run_cmd[@]}" | stdbuf -oL grep -v "$FILTERSTR"
     fi
 
     if [[ -n $maildir_path ]]; then
@@ -460,14 +464,21 @@ function do_it ()
 
     if [[ $SANITY == 1 ]]; then
         echo "Sanity Check $SRC -> $DST ...."
-        S1=$(mktemp)
-        S2=$(mktemp)
-        cd "$SRC" || return 1
-        ls -R --ignore="OneDrive" --ignore="Maildir" --ignore="Maildir.tar.gz" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" --ignore="lost+found" > "$S1"
-        cd "$DST" || return 1
-        ls -R --ignore="OneDrive" --ignore="Maildir" --ignore="Maildir.tar.gz" --ignore=".Trash*" --ignore="#recycle" --ignore="_recycle" --ignore="lost+found" > "$S2"
-        diff --side-by-side --suppress-common-lines "$S1" "$S2"
-        rm -f "$S1" "$S2"
+        # Re-run the same rsync as a dry run rather than diffing raw `ls -R`
+        # listings: this applies the exact include/exclude/gitignore rules used
+        # above, so files deliberately skipped (e.g. editor *~ backups) are not
+        # reported as missing. Anything listed here is a real difference: a
+        # failed transfer, a file changed during the run, or an extra file that
+        # --delete could not remove.
+        local -a sanity_cmd=("${RSYNC_CMD[@]}")
+        if [[ $INC == 1 ]]; then
+            sanity_cmd+=(--files-from="${INC_FILE}")
+        fi
+        sanity_cmd+=(--dry-run --no-progress "${SRC}/" "${DST}/")
+        "${sanity_cmd[@]}" | stdbuf -oL grep -v "$FILTERSTR"
+        if (( PIPESTATUS[0] != 0 )); then
+            echo "WARNING: sanity check rsync reported an error"
+        fi
     fi
 
     echo
@@ -536,6 +547,31 @@ function backup_home ()
     echo "Backup of home to nas/Home completed in $(date -d@$ELAPSED -u +%H:%M:%S)"
 }
 
+# Quick first pass for a freshly formatted target: copy only the explicit
+# ~/nas subset in nas-essential.txt (Home, Art, Photos, ...; the huge DVD and
+# Archive trees are omitted). Because this is an include-list backup, --delete
+# is scoped to the listed dirs, so running a normal full backup later simply
+# adds the remaining trees without touching what is already there.
+function backup_nas_essentials ()
+{
+    DRY=0
+    INC=1
+    TRASH=0
+    SANITY=1
+    EXCL=1
+    SRC="$HOME/nas"
+    DST="$1"
+    INC_FILE="$ESSENTIAL_INC_FILE"
+
+    if [[ ! -r $INC_FILE ]]; then
+        echo "ERROR: $INC_FILE missing (bootstrap repo incomplete?)" >&2
+        return 1
+    fi
+
+    echo "Essentials backup: $(grep -v '^#' "$INC_FILE" | sed '/^[[:space:]]*$/d' | tr '\n' ' ')"
+    do_it
+}
+
 SKIP_TIDY=0
 JOBS="${DO_BACKUP_JOBS:-3}"
 ARGS=()
@@ -588,15 +624,28 @@ if [[ -x $HOME/bin/vscode-extensions ]]; then
 fi
 
 if [[ $# -gt 0 ]]; then
-    if [[ $1 == "home" ]]; then
-        do_backup_home
-    else
-        backup_home
-    fi
+    case $1 in
+        home)
+            do_backup_home
+            ;;
+        essentials|essential|quick)
+            if [[ -n ${2:-} ]]; then
+                DST="$2"
+            else
+                echo "DESTINATION"
+                select_dir
+                DST="$DIR"
+            fi
+            backup_nas_essentials "$DST"
+            ;;
+        *)
+            backup_home
+            ;;
+    esac
     exit
 fi
 
-select PRESET in home usb-home ventoy disks $BASE/*;
+select PRESET in home usb-home ventoy disks "$BASE"/* essentials;
 do
     case $PRESET in
         home)
@@ -645,6 +694,12 @@ do
             SANITY=1
             EXCL=1
             do_input
+            break
+            ;;
+        essentials)
+            echo "DESTINATION"
+            select_dir
+            backup_nas_essentials "$DIR"
             break
             ;;
         *)

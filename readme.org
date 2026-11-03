@@ -62,6 +62,12 @@ Below is a brief description of each script and its functionality.
   On exFAT/FAT/NTFS targets (which reject the =:= in Maildir filenames) the
   Maildir tree is skipped and the weekly =Maildir.tar.gz= is copied instead;
   use =ext-drive-setup= to reformat a drive to ext4 if you need the live tree.
+  For a freshly formatted target, =do_backup essentials= (or the =essentials=
+  menu entry) copies only the ~/nas subset in
+  =bootstrap/lib/nas-essential.txt= (Home, Art, Photos, ...), skipping the
+  huge =DVD= and =Archive= trees. Run a normal backup of the same mount later
+  to add the rest; the include list scopes =--delete=, so nothing already
+  copied is removed.
 
 ** Screenshot & Screen Recording
 
