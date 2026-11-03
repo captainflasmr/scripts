@@ -1,0 +1,22 @@
+# nas-essential.txt - quick first-pass subset of ~/nas, used by
+# `do_backup essentials` (and the interactive 'essentials' preset).
+#
+# Purpose: after reformatting a backup disk, copy the important data first
+# without waiting for the multi-hundred-GB media trees. A normal backup of the
+# same mount afterwards fills in everything else and never deletes these.
+#
+# Deliberately omitted (large, re-creatable/less urgent):
+#   DVD     (~260G)
+#   Archive (~164G)
+# Add either line below if you want it included in the quick pass. Music
+# (~37G) is included here; remove it for an even faster first pass.
+#
+# Paths are relative to ~/nas (the transfer root), as with --files-from.
+Home
+Art
+Documents
+Music
+OneDrive
+Photos
+Shared
+todo.org
