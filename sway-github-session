@@ -1,0 +1,11 @@
+#!/bin/sh
+# Start sway with GH_TOKEN loaded from the local gh token file.
+# Used by the "Sway (GitHub)" session in nwg-hello, so every process in
+# the sway session (Emacs, terminals, GUI apps) inherits the token
+# without putting it in tracked dotfiles.
+if [ -r "$HOME/.config/gh/token.env" ]; then
+    set -a
+    . "$HOME/.config/gh/token.env"
+    set +a
+fi
+exec /usr/bin/sway "$@"

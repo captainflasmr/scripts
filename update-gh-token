@@ -1,0 +1,29 @@
+#!/bin/sh
+# Refresh ~/.config/gh/token.env from the gh credential store.
+# Run this after re-authenticating with `gh auth login`.
+set -eu
+umask 077
+token=$(gh auth token)
+printf 'GH_TOKEN=%s\n' "$token" > "$HOME/.config/gh/token.env"
+chmod 600 "$HOME/.config/gh/token.env"
+unset token
+echo "Updated $HOME/.config/gh/token.env"
+
+# Apply to the current systemd/DBus session where possible.
+set -a
+. "$HOME/.config/gh/token.env"
+set +a
+if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+    systemctl --user import-environment GH_TOKEN 2>/dev/null || true
+    dbus-update-activation-environment --systemd GH_TOKEN 2>/dev/null || true
+fi
+
+# Update the running Emacs server too, without printing the token.
+if command -v emacsclient >/dev/null 2>&1; then
+    emacsclient --eval '(with-temp-buffer
+                          (insert-file-contents (expand-file-name "~/.config/gh/token.env"))
+                          (goto-char (point-min))
+                          (when (re-search-forward "^GH_TOKEN=\\(.*\\)$" nil t)
+                            (setenv "GH_TOKEN" (match-string 1)))
+                          nil)' >/dev/null 2>&1 || true
+fi
