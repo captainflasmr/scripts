@@ -41,6 +41,11 @@ GIT_INCLUDE_OVERRIDES=(
     '/.config/fish/**'
     '/.config/environment.d/'
     '/.config/environment.d/**'
+    # GitHub CLI state and the local GH_TOKEN file.  Deliberately kept out of
+    # the ~/.config git whitelist (sensitive), but backed up to the NAS.
+    # See ~/.config/.gitignore: gh/ must never be whitelisted.
+    '/.config/gh/'
+    '/.config/gh/**'
     '/.config/waybar/'
     '/.config/waybar/**'
     # sway/ itself is tracked, but this single config file is git-ignored.
