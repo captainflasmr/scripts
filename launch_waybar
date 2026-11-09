@@ -1,59 +1,57 @@
 #!/bin/bash
 
-# Define directories to watch.
-WATCH_DIRECTORIES=(
-    "$HOME/.config/waybar_garuda"
-    "$HOME/.config/waybar_jdyer"
-)
+# Start the Waybar configuration named in ~/.config/waybar_active.
+# Logs to ~/.cache/waybar-launch.log so startup failures are diagnosable.
+# Usage: launch_waybar
 
-# Define cleanup function
-cleanup() {
-    echo "Cleaning up..."
-    # Kill background inotifywait loops
-    kill 0
-    killall waybar 2>/dev/null
-    exit 0
-}
+CONFIG_FILE="$HOME/.config/waybar_active"
+LOG_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/waybar-launch.log"
+mkdir -p "$(dirname "$LOG_FILE")"
 
-# Setup a trap for SIGINT (Ctrl+C) and SIGTERM
-# trap "cleanup" SIGINT SIGTERM
+if [[ ! -f $CONFIG_FILE ]]; then
+    echo "$HOME/.config/waybar" > "$CONFIG_FILE"
+fi
+
+DIR=$(cat "$CONFIG_FILE")
+CSS="$DIR/style.css"
+
+log() { printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$LOG_FILE"; }
+
+if [[ ! -f $DIR/config || ! -f $CSS ]]; then
+    log "ERROR: missing config or style under $DIR"
+    exit 1
+fi
 
 start_waybar() {
-    echo "Restarting waybar..."
+    log "starting waybar with $DIR"
     killall waybar 2>/dev/null
-    CONFIG_FILE="/home/jdyer/.config/waybar_active"
-    CONFIG_GARUDA="/home/jdyer/.config/waybar_garuda"
-    CONFIG_JDYER="/home/jdyer/.config/waybar_jdyer"
 
-    if [[ ! -f $CONFIG_FILE ]]; then
-       echo $CONFIG_GARUDA > $CONFIG_FILE
+    # Wait for any previous instance to actually disappear before starting.
+    for _ in {1..10}; do
+        pgrep -x waybar >/dev/null || break
+        sleep 0.2
+    done
+
+    # setsid detaches Waybar from this script/session so it survives after
+    # launch_waybar exits (Sway starts this from its startup script).
+    setsid waybar -c "$DIR/config" -s "$CSS" >> "$LOG_FILE" 2>&1 &
+    local pid=$!
+    sleep 1
+
+    if kill -0 "$pid" 2>/dev/null; then
+        log "waybar running (pid $pid)"
+        return 0
     fi
 
-    CURRENT_CONFIG=$(cat $CONFIG_FILE)
-
-    waybar -c $CURRENT_CONFIG/config -s $CURRENT_CONFIG/style.css &
-
-    # waybar &
+    log "waybar exited during startup"
+    return 1
 }
 
-# Start waybar initially
-start_waybar
+for attempt in 1 2 3; do
+    start_waybar && exit 0
+    log "waybar attempt $attempt failed; retrying"
+    sleep 1
+done
 
-# echo "Watching for changes. Press Ctrl+C to stop."
-
-# # Function to monitor changes in a directory
-# monitor_directory() {
-#     DIR=$1
-#     while inotifywait -e attrib,create,modify,delete,move -qq "$DIR"; do
-#         echo "Change detected in $DIR"
-#         start_waybar
-#     done
-# }
-
-# # Start monitoring each directory in the background
-# for DIR in "${WATCH_DIRECTORIES[@]}"; do
-#     monitor_directory "$DIR" &
-# done
-
-# # Wait for any process to exit
-# wait
+log "ERROR: waybar failed to start after 3 attempts"
+exit 1

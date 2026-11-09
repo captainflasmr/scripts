@@ -13,7 +13,6 @@ killall -q $KILL_LIST
 
 if [[ $XDG_SESSION_TYPE == "wayland" ]]; then
     toggle_wlr_keyboard.sh
-    launch_waybar &
     sway-audio-idle-inhibit &
     swaybg -i ~/.last_wallpaper.jpg &
     dunst &
@@ -26,6 +25,11 @@ nm-applet --indicator &
 ydotoold --socket-perm 0777 --socket-path=/run/user/1000/.ydotool_socket &
 syncthing --no-browser --home="/home/jdyer/.config/syncthing" &
 autotiling &
+
+# Start the bar after the session services above are up, and give Sway's
+# output setup (scale changes, etc.) a moment to settle first.
+( sleep 1; launch_waybar ) &
+
 sleep 2
 udisksctl mount -b /dev/mmcblk0p1 # SD Card
 # udisksctl mount -b /dev/sda1
