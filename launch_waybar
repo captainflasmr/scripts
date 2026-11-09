@@ -14,6 +14,8 @@ fi
 
 DIR=$(cat "$CONFIG_FILE")
 CSS="$DIR/style.css"
+# theme-switch writes style.theme.css next to each bar's style.css.
+[[ -f "$DIR/style.theme.css" ]] && CSS="$DIR/style.theme.css"
 
 log() { printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$LOG_FILE"; }
 

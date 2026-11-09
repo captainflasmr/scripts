@@ -37,7 +37,9 @@ NEW_CONFIG="${CONFIGS[$NEXT_INDEX]}"
 echo "$NEW_CONFIG" > "$CONFIG_FILE"
 
 # Kill and restart waybar with new config
+CSS="$NEW_CONFIG/style.css"
+[[ -f "$NEW_CONFIG/style.theme.css" ]] && CSS="$NEW_CONFIG/style.theme.css"
 killall waybar 2>/dev/null
-waybar -c "$NEW_CONFIG/config" -s "$NEW_CONFIG/style.css" &
+waybar -c "$NEW_CONFIG/config" -s "$CSS" &
 
 echo "Switched to $(basename "$NEW_CONFIG")"

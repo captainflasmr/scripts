@@ -17,7 +17,9 @@ else
    fi
 
    CURRENT_CONFIG=$(cat $CONFIG_FILE)
+   CSS="$CURRENT_CONFIG/style.css"
+   [[ -f "$CURRENT_CONFIG/style.theme.css" ]] && CSS="$CURRENT_CONFIG/style.theme.css"
 
    # Start waybar with the new configuration
-   waybar -c $CURRENT_CONFIG/config -s $CURRENT_CONFIG/style.css &
+   waybar -c "$CURRENT_CONFIG/config" -s "$CSS" &
 fi

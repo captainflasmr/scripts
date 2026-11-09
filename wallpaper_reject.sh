@@ -42,9 +42,13 @@ c5=$(echo $colors | jq -r '.colors.color5')
 c6=$(echo $colors | jq -r '.colors.color6')
 c8=$(echo $colors | jq -r '.colors.color8')
 
-swaymsg client.focused          "$fg" "$bg" "$fg" "$c5" "$c6"
-swaymsg client.focused_inactive "#666666" "#2a2a2a" "#888888" "#666666" "#666666"
-swaymsg client.unfocused         "#555555" "#222222" "#777777" "#555555" "#555555"
-swaymsg client.urgent            "$c1" "$c1" "$bg" "$fg" "$c1"
+# Keep static theme colours if one was chosen with Mod4+F3.
+theme_active="$HOME/.config/sway/theme-active"
+if [ ! -s "$theme_active" ] || [ "$(cat "$theme_active")" = "pywal" ]; then
+    swaymsg client.focused          "$fg" "$bg" "$fg" "$c5" "$c6"
+    swaymsg client.focused_inactive "#666666" "#2a2a2a" "#888888" "#666666" "#666666"
+    swaymsg client.unfocused         "#555555" "#222222" "#777777" "#555555" "#555555"
+    swaymsg client.urgent            "$c1" "$c1" "$bg" "$fg" "$c1"
+fi
 
 notify-send "Wallpaper rejected and deleted" "$(basename "$current_path") removed"
