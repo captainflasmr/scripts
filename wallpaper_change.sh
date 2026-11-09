@@ -1,6 +1,18 @@
 #!/bin/bash
 
-wallpaper_path="$(find ~/wallpaper/wallpaper-gmic-textured-glass-hd -type f | shuf -n 1)"
+wallpaper_dir="$HOME/wallpaper/wallpaper-selected-test"
+
+# Exclude the currently active wallpaper so two consecutive changes never pick
+# the same image. Fall back to the full list if it is the only file available.
+current_wallpaper=""
+[ -f ~/.last_wallpaper_path ] && current_wallpaper="$(cat ~/.last_wallpaper_path)"
+
+find_args=("$wallpaper_dir" -type f)
+[ -n "$current_wallpaper" ] && find_args+=(! -path "$current_wallpaper")
+wallpaper_path="$(find "${find_args[@]}" | shuf -n 1)"
+if [ -z "$wallpaper_path" ]; then
+    wallpaper_path="$(find "$wallpaper_dir" -type f | shuf -n 1)"
+fi
 
 # Save current wallpaper as previous before overwriting
 if [ -f ~/.last_wallpaper_path ]; then
@@ -40,8 +52,8 @@ wal -i ~/.last_wallpaper.jpg -q -n -s
 # Give foot and kitty only a gentle tint of the pywal palette (mostly their own
 # base). Each reloads on SIGUSR1 to pick up the regenerated theme file.
 #   foot/theme.ini, kitty/theme.conf
-# alacritty is deliberately left out: it keeps a static Gruvbox theme and lets
-# the swayfx-blurred wallpaper seep through via its window opacity instead.
+# Alacritty is not updated here: theme-switch (Mod4+F3) owns its palette, so it
+# keeps matching the selected GTK theme and the blur/opacity look.
 python3 ~/bin/terminal_pywal_tint.py
 pkill -SIGUSR1 -x foot 2>/dev/null || true
 pkill -SIGUSR1 -x kitty 2>/dev/null || true
@@ -57,8 +69,12 @@ c5=$(echo $colors | jq -r '.colors.color5')
 c6=$(echo $colors | jq -r '.colors.color6')
 c8=$(echo $colors | jq -r '.colors.color8')
 
-# Update sway window decorations
-swaymsg client.focused          "$fg" "$bg" "$fg" "$c5" "$c6"
-swaymsg client.focused_inactive "#666666" "#2a2a2a" "#888888" "#666666" "#666666"
-swaymsg client.unfocused         "#555555" "#222222" "#777777" "#555555" "#555555"
-swaymsg client.urgent            "$c1" "$c1" "$bg" "$fg" "$c1"
+# Update sway window decorations, unless a static theme selected with
+# Mod4+F3 owns the border colours.
+theme_active="$HOME/.config/sway/theme-active"
+if [ ! -s "$theme_active" ] || [ "$(cat "$theme_active")" = "pywal" ]; then
+    swaymsg client.focused          "$fg" "$bg" "$fg" "$c5" "$c6"
+    swaymsg client.focused_inactive "#666666" "#2a2a2a" "#888888" "#666666" "#666666"
+    swaymsg client.unfocused         "#555555" "#222222" "#777777" "#555555" "#555555"
+    swaymsg client.urgent            "$c1" "$c1" "$bg" "$fg" "$c1"
+fi
