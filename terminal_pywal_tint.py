@@ -26,8 +26,8 @@ CACHE = HOME / ".cache" / "wal" / "colors.json"
 
 
 # Each base palette: bg, fg, then 8 normal + 8 bright in ANSI order.
-# (alacritty is intentionally excluded: it keeps a static theme and lets the
-#  swayfx-blurred wallpaper seep through via window opacity instead.)
+# (alacritty is intentionally excluded here: theme-switch (Mod4+F3) sets its
+#  palette from the selected GTK theme, keeping the blur/opacity look.)
 ZENBURN = {  # foot's existing inline base
     "bg": "#222222", "fg": "#dcdccc",
     "normal": ["#222222", "#cc9393", "#7f9f7f", "#d0bf8f",
