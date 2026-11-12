@@ -1,0 +1,219 @@
+#!/usr/bin/env bash
+# eth-check - report physical ethernet cable/link status and router info
+#
+# For GL.iNet routers the admin panel is normally at http://192.168.8.1
+# (the script prints the actual gateway, so it still works if that was changed).
+set -euo pipefail
+
+GREEN=$'\033[0;32m'
+RED=$'\033[0;31m'
+CYAN=$'\033[0;36m'
+BOLD=$'\033[1m'
+NC=$'\033[0m'
+
+test_net=false
+watch=false
+quiet=false
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [-w] [-t] [-q] [interface]
+
+Check the physical ethernet cable/link status and show router details.
+
+  -w  watch and print link state changes (Ctrl-C to stop)
+  -t  also test gateway/internet/DNS connectivity
+  -q  quiet; exit status only
+  -h  show this help
+
+Without an interface argument, all physical ethernet interfaces are checked.
+
+Exit status: 0 = link up, 1 = no link, 2 = no ethernet interface found.
+EOF
+}
+
+while getopts ":wtqh" opt; do
+    case $opt in
+        w) watch=true ;;
+        t) test_net=true ;;
+        q) quiet=true ;;
+        h) usage; exit 0 ;;
+        *) usage >&2; exit 2 ;;
+    esac
+done
+shift $((OPTIND - 1))
+iface=${1:-}
+
+is_ethernet() {
+    local dev=$1
+    [[ -e /sys/class/net/$dev/device ]] || return 1   # skip lo/virtual
+    [[ -e /sys/class/net/$dev/phy80211 ]] && return 1 # skip wifi
+    [[ $(cat "/sys/class/net/$dev/type" 2>/dev/null) == 1 ]]
+}
+
+if [[ -n $iface ]]; then
+    if [[ ! -d /sys/class/net/$iface ]]; then
+        echo "eth-check: no such interface: $iface" >&2
+        exit 2
+    fi
+    ifaces=("$iface")
+else
+    ifaces=()
+    for d in /sys/class/net/*; do
+        dev=${d##*/}
+        if is_ethernet "$dev"; then
+            ifaces+=("$dev")
+        fi
+    done
+fi
+
+if (( ${#ifaces[@]} == 0 )); then
+    echo "eth-check: no ethernet interface found" >&2
+    exit 2
+fi
+
+# 1 if the PHY sees a carrier (cable plugged into a live port), else 0
+link_state() {
+    cat "/sys/class/net/$1/carrier" 2>/dev/null || echo 0
+}
+
+gateway_of() {
+    ip route show default dev "$1" 2>/dev/null | awk '/^default/ {print $3; exit}'
+}
+
+gateway_mac() {
+    ip neigh show "$2" dev "$1" 2>/dev/null \
+        | awk '/lladdr/ {for (i = 1; i <= NF; i++) if ($i == "lladdr") {print $(i + 1); exit}}' \
+        | tr 'a-f' 'A-F'
+}
+
+# GL.iNet's registered OUI is 94:83:C4; 192.168.8.1 is their default LAN IP
+router_vendor() {
+    local gw=$1 mac=$2
+    if [[ ${mac:0:8} == "94:83:C4" || $gw == "192.168.8.1" ]]; then
+        echo "GL.iNet"
+    fi
+}
+
+fmt_duration() {
+    local s=$1
+    if (( s >= 3600 )); then
+        printf '%dh %dm' $((s / 3600)) $((s % 3600 / 60))
+    elif (( s >= 60 )); then
+        printf '%dm' $((s / 60))
+    else
+        printf '%ds' "$s"
+    fi
+}
+
+report() {
+    local dev=$1 carrier oper flags info speed duplex mac ip gw gwmac vendor dns expiry left nm
+    carrier=$(link_state "$dev")
+    oper=$(cat "/sys/class/net/$dev/operstate" 2>/dev/null || echo unknown)
+    flags=$(ip -o link show dev "$dev" 2>/dev/null | sed -n 's/.*<\([^>]*\)>.*/\1/p')
+
+    if [[ $carrier == 1 ]]; then
+        info=$(ethtool "$dev" 2>/dev/null || true)
+        speed=$(awk -F': ' '/Speed:/{print $2}' <<<"$info")
+        duplex=$(awk -F': ' '/Duplex:/{print $2}' <<<"$info")
+        mac=$(cat "/sys/class/net/$dev/address" 2>/dev/null || true)
+        ip=$(ip -4 -br addr show dev "$dev" 2>/dev/null | awk 'NR==1{print $3}')
+        gw=$(gateway_of "$dev")
+        gwmac=""
+        [[ -n $gw ]] && gwmac=$(gateway_mac "$dev" "$gw")
+        vendor=""
+        [[ -n $gw ]] && vendor=$(router_vendor "$gw" "$gwmac")
+        dns=$(nmcli -t -f IP4.DNS device show "$dev" 2>/dev/null \
+              | sed -n 's/^IP4\.DNS\[[0-9]*\]://p' | paste -sd, -)
+        expiry=$(nmcli -t -f DHCP4.OPTION device show "$dev" 2>/dev/null \
+                 | sed -n 's/^DHCP4\.OPTION\[[0-9]*\]:expiry = //p' | head -1)
+        nm=$(nmcli -t -f DEVICE,STATE,CONNECTION device status 2>/dev/null \
+             | awk -F: -v d="$dev" '$1==d {print $2 " (" $3 ")"}')
+
+        printf '%s%s%s: %scable connected%s' "$BOLD" "$dev" "$NC" "$GREEN" "$NC"
+        if [[ -n $speed && $speed != "Unknown!" ]]; then
+            printf ' - %s, %s duplex' "$speed" "$duplex"
+        fi
+        printf '\n'
+
+        [[ -n ${mac:-} ]] && printf '    %-15s %s\n' "MAC:" "$mac"
+        [[ -n ${ip:-} ]] && printf '    %-15s %s\n' "IP:" "$ip"
+
+        if [[ -n $gw ]]; then
+            if [[ -n $vendor ]]; then
+                printf '    %-15s %s (%s router, %s)\n' "Gateway:" "$gw" "$vendor" "$gwmac"
+            else
+                printf '    %-15s %s%s\n' "Gateway:" "$gw" "${gwmac:+ ($gwmac)}"
+            fi
+            printf '    %-15s %shttp://%s%s\n' "Admin panel:" "$CYAN" "$gw" "$NC"
+        fi
+
+        [[ -n ${dns:-} ]] && printf '    %-15s %s\n' "DNS:" "$dns"
+
+        if [[ $expiry =~ ^[0-9]+$ ]]; then
+            left=$((expiry - $(date +%s)))
+            if (( left > 0 )); then
+                printf '    %-15s %s remaining\n' "DHCP lease:" "$(fmt_duration "$left")"
+            fi
+        fi
+
+        [[ -n ${nm:-} ]] && printf '    %-15s %s\n' "NetworkManager:" "$nm"
+
+        if $test_net; then
+            local gw_status="no reply" net_status="unreachable" dns_status="fails"
+            if [[ -n $gw ]] && ping -c 1 -W 1 "$gw" >/dev/null 2>&1; then
+                gw_status="reachable"
+            fi
+            if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1; then
+                net_status="reachable"
+            fi
+            if getent hosts example.com >/dev/null 2>&1; then
+                dns_status="ok"
+            fi
+            printf '    %-15s gateway %s, internet %s, DNS %s\n' \
+                "Connectivity:" "$gw_status" "$net_status" "$dns_status"
+        fi
+        return 0
+    fi
+
+    printf '%s%s%s: %sno cable / no link%s (carrier=0, state=%s)\n' \
+        "$BOLD" "$dev" "$NC" "$RED" "$NC" "$oper"
+    if [[ $flags != *UP* ]]; then
+        printf '    Interface is administratively down: sudo ip link set %s up\n' "$dev"
+    else
+        printf '    NIC is present; check cable seating and the switch/router port.\n'
+    fi
+    return 1
+}
+
+if $quiet; then
+    for dev in "${ifaces[@]}"; do
+        [[ $(link_state "$dev") == 1 ]] && exit 0
+    done
+    exit 1
+fi
+
+if $watch; then
+    declare -A prev=()
+    while true; do
+        for dev in "${ifaces[@]}"; do
+            if [[ $(link_state "$dev") == 1 ]]; then
+                speed=$(ethtool "$dev" 2>/dev/null | awk -F': ' '/Speed:/{print $2}')
+                state="${GREEN}LINK UP${NC}${speed:+ ($speed)}"
+            else
+                state="${RED}LINK DOWN${NC}"
+            fi
+            if [[ ${prev[$dev]:-} != "$state" ]]; then
+                printf '%s  %-6s %s\n' "$(date '+%H:%M:%S')" "$dev" "$state"
+                prev[$dev]=$state
+            fi
+        done
+        sleep 1
+    done
+fi
+
+status=0
+for dev in "${ifaces[@]}"; do
+    report "$dev" || status=1
+done
+exit $status
