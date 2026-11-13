@@ -25,6 +25,10 @@ GIT_INCLUDE_OVERRIDES=(
     '/.emacs.d/Emacs-vanilla/**'
     '/.emacs.d/Emacs-DIYer/'
     '/.emacs.d/Emacs-DIYer/**'
+    # The org-capture notes file lives in ~/.emacs.d but is deliberately kept
+    # out of the Emacs git repo (personal notes, sometimes pasted secrets).
+    # Re-include it so it still reaches the NAS.
+    '/.emacs.d/notes'
     # ~/.config is a git dotfiles repo whose .gitignore is '*' then '!dir/'.
     # '!dir/' re-includes the directory entry but NOT its contents, so when the
     # contents are untracked, 'git ls-files --ignored --directory' (run by
