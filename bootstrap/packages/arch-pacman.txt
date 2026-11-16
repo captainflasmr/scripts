@@ -22,6 +22,7 @@ cups
 devede
 digikam
 docker
+dos2unix
 dotnet-runtime
 dotnet-sdk
 drawio-desktop-appimage

@@ -17,6 +17,7 @@ cmake
 copyq
 cron
 croc
+dos2unix
 f3
 fd-find
 fish
