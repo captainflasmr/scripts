@@ -1,6 +1,6 @@
 #!/bin/bash
 
-wallpaper_dir="$HOME/wallpaper/wallpaper-selected-test"
+wallpaper_dir="$HOME/wallpaper/wallpaper-gmic-textured-glass-hd"
 
 # Exclude the currently active wallpaper so two consecutive changes never pick
 # the same image. Fall back to the full list if it is the only file available.
@@ -77,4 +77,10 @@ if [ ! -s "$theme_active" ] || [ "$(cat "$theme_active")" = "pywal" ]; then
     swaymsg client.focused_inactive "#666666" "#2a2a2a" "#888888" "#666666" "#666666"
     swaymsg client.unfocused         "#555555" "#222222" "#777777" "#555555" "#555555"
     swaymsg client.urgent            "$c1" "$c1" "$bg" "$fg" "$c1"
+
+    # Keep Waybar's pywal accents (including the current workspace) in sync
+    # with the newly generated wallpaper palette.  Update the CSS without
+    # restarting the bar, then ask Waybar to reload it.
+    ~/.config/sway/scripts/theme-switch --pywal-waybar --no-restart >/dev/null 2>&1 || true
+    pkill -SIGUSR2 -x waybar 2>/dev/null || true
 fi
