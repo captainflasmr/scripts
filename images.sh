@@ -134,20 +134,30 @@ function process_photos() {
             echo "Processing Photos starting from month: $START_MONTH"
             echo
             cd "${PHOTOS_SRC}/${YEAR}"
-            for DIR in $(find . -mindepth 1 -maxdepth 1 -type d -printf '%p;' | grep -E '[0-9]{6}' | sort); do
-                FOLDER=$(basename $DIR)
-                if [[ $FOLDER -ge $START_MONTH ]]; then
-                    echo "Processing $FOLDER"
-                    SRC="${PHOTOS_SRC}/${YEAR}/${FOLDER}"
-                    if [[ "$ORGANIZATION_MODE" == "tagged" ]]; then
-                        DST="$HOME/DCIM/content/static/tagged"
-                    else
-                        DST="$HOME/DCIM/content/static/photos/${YEAR}"
-                    fi
-                    resize_images
+            for DIR in $(find . -mindepth 1 -maxdepth 1 -type d -printf '%p;' | sort); do
+                FOLDER=$(basename "$DIR")
+                [[ "$FOLDER" == "private" ]] && continue
+                [[ -f "$DIR/.nomedia" ]] && continue
+                # Month directories are filtered from START_MONTH onward;
+                # non-month directories (e.g. 2012-Misc) are always included.
+                if [[ "$FOLDER" =~ ^[0-9]{6} ]] && [[ "$FOLDER" < "$START_MONTH" ]]; then
+                    continue
                 fi
+                echo "Processing $FOLDER"
+                SRC="${PHOTOS_SRC}/${YEAR}/${FOLDER}"
+                if [[ "$ORGANIZATION_MODE" == "tagged" ]]; then
+                    DST="$HOME/DCIM/content/static/tagged"
+                else
+                    DST="$HOME/DCIM/content/static/photos/${YEAR}"
+                fi
+                resize_images
             done
             cd -
+            if [[ "$ORGANIZATION_MODE" != "tagged" ]] && command -v verify_photos.sh >/dev/null; then
+                echo
+                echo "Verifying generated photos from $START_MONTH..."
+                verify_photos.sh "$YEAR" "$YEAR" "$START_MONTH" || true
+            fi
             ;;
         2)
             # New functionality - process year range
@@ -185,9 +195,12 @@ function process_photos() {
                 echo "Processing year: $YEAR"
                 cd "$YEAR_DIR"
                 
-                # Process all month directories in this year
-                for DIR in $(find . -mindepth 1 -maxdepth 1 -type d -printf '%p;' | grep -E '[0-9]{6}' | sort); do
-                    FOLDER=$(basename $DIR)
+                # Process all subdirectories in this year, including
+                # non-month folders such as 2012-Misc and 2020-All.
+                for DIR in $(find . -mindepth 1 -maxdepth 1 -type d -printf '%p;' | sort); do
+                    FOLDER=$(basename "$DIR")
+                    [[ "$FOLDER" == "private" ]] && continue
+                    [[ -f "$DIR/.nomedia" ]] && continue
                     echo "  Processing $FOLDER"
                     SRC="${PHOTOS_SRC}/${YEAR}/${FOLDER}"
                     if [[ "$ORGANIZATION_MODE" == "tagged" ]]; then
@@ -199,6 +212,11 @@ function process_photos() {
                 done
                 cd -
             done
+            if [[ "$ORGANIZATION_MODE" != "tagged" ]] && command -v verify_photos.sh >/dev/null; then
+                echo
+                echo "Verifying generated photos for $START_YEAR-$END_YEAR..."
+                verify_photos.sh "$START_YEAR" "$END_YEAR" || true
+            fi
             ;;
         *)
             echo "Invalid choice. Returning to main menu."
