@@ -24,7 +24,8 @@ On the stick (after =refresh-usb.sh=):
 ├── sync-from-nas.sh      pull the live data set down from the NAS
 ├── setup-ventoy.sh       partition a blank stick (Ventoy + ext4 payload)
 ├── lib/                  common.sh, pkg.sh, steps.sh, payload.sh,
-│                         home-include.txt, home-exclude.txt (the shared lists)
+│                         home-include.txt, home-exclude.txt (shared lists),
+│                         kbd-backlight (Dell keyboard-backlight helper)
 ├── packages/             arch-pacman / arch-aur / mint-apt / flatpak /
 │                         arch-remove / vscode-extensions
 ├── home/                 curated dotfiles + bin + .config
@@ -85,7 +86,7 @@ Add =--check= to setup-ventoy.sh to run the f3probe flash verification (opt-in).
    #+end_src
 3. Enter the gpg passphrase when prompted (for secrets).
 
-Order of operations: detect distro → system update → install packages (pacman+AUR / apt) → flatpaks → VS Code extensions → restore home → restore secrets → restore data → default shell (fish) → user groups → optional NAS-mount cron → optional Samsung backlight GRUB fix.
+Order of operations: detect distro → system update → install packages (pacman+AUR / apt) → flatpaks → VS Code extensions → restore home → restore secrets → restore data → default shell (fish) → user groups → optional NAS-mount cron → optional Samsung backlight GRUB fix → optional Dell keyboard-backlight timeout fix.
 
 ** Useful flags
 | =--yes=           | assume yes to prompts               |
@@ -144,5 +145,6 @@ Every sync path reads the same definitions in =lib/=, so nothing drifts:
 - The Mint list is *curated*, not auto-translated. Cinnamon/X11 means the whole Wayland stack is omitted; a few apps (vscode, zed, veracrypt, ollama) have no apt package and are noted as TODO in =mint-apt.txt=.
 - Package install failures are warnings, not fatal — the run continues and prints what failed so you can chase names afterward.
 - The NAS-mount cron and Samsung backlight fix are *opt-in* prompts; they only make sense on specific machines.
+- The Dell keyboard-backlight step is *opt-in* and only runs on Dell laptops. It installs =kbd-backlight= and a udev rule that reapplies the chosen timeout at boot and on AC/battery changes. The default is =12h= because Dell's BIOS often rejects a =0=/never timeout through sysfs; set *Never* in BIOS setup instead if you want it truly always on. Change it later with =kbd-backlight 30s=, =5m=, or =12h=.
 - The display/login manager is only disabled+masked on *Arch* (which launches its compositor from the shell). On Mint the login manager is left running. If a Mint box already had it masked, undo with =sudo systemctl unmask lightdm && sudo systemctl enable --now lightdm=.
 - Legacy scripts (=install.sh=, =install-from-nas.sh=, =install-minimal-sway.sh=, …) in =~/bin= are superseded by this. Keep or delete them as you like.

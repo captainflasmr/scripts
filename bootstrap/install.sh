@@ -103,6 +103,7 @@ if confirm "Set up reboot NAS auto-mount cron (only useful on your LAN)?"; then
 fi
 step_quirk_samsung_backlight
 step_quirk_usb_uas
+step_quirk_dell_kbd_backlight
 step_mint_keymap
 step_mint_keybindings
 step_mint_touchpad_gestures

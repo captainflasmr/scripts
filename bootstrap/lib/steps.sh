@@ -319,6 +319,72 @@ step_quirk_usb_uas() {
     info "Verify: dmesg | grep -i uas  -> expect 'UAS is ignored ... using usb-storage'"
 }
 
+# --- Dell keyboard backlight idle timeout ---------------------------------
+# Many Dell laptops fade the keyboard backlight after an idle timeout (10s by
+# default) and expose it as /sys/class/leds/dell::kbd_backlight/stop_timeout.
+# A zero/never timeout is often rejected by the BIOS through sysfs, so use the
+# longest accepted value (12h on the test machine). The installed helper
+# remembers the chosen value, and a udev rule reapplies it at boot and on
+# AC/battery changes (many Dells keep separate timeouts per power source).
+# Opt-in, and self-skips on non-Dell systems.
+step_quirk_dell_kbd_backlight() {
+    section "Dell keyboard backlight timeout"
+    local vendor; vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)
+    if [[ $vendor != *Dell* ]]; then
+        info "not a Dell (${vendor:-unknown vendor}) — skipping"
+        return 0
+    fi
+
+    local led=/sys/class/leds/dell::kbd_backlight
+    if [[ ! -e $led/stop_timeout ]]; then
+        info "loading dell-laptop module"
+        sudo modprobe dell-laptop 2>/dev/null || true
+    fi
+    if [[ ! -e $led/stop_timeout ]]; then
+        warn "Dell keyboard backlight not exposed — skipping"
+        return 0
+    fi
+
+    confirm "Apply Dell keyboard backlight timeout fix (default 12h)?" || { info "skipped"; return 0; }
+
+    local src="$BOOTSTRAP_DIR/lib/kbd-backlight"
+    [[ -f $src ]] || { warn "helper not found: $src — skipping"; return 0; }
+    sudo install -m 0755 -o root -g root "$src" /usr/local/bin/kbd-backlight \
+        || { warn "could not install helper — skipping"; return 0; }
+    info "installed /usr/local/bin/kbd-backlight"
+
+    local conf=/etc/kbd-backlight.conf
+    if [[ ! -f $conf ]]; then
+        sudo tee "$conf" >/dev/null <<'EOF'
+# Dell keyboard backlight idle timeout. Managed by kbd-backlight.
+# 0/never = always on (only if the BIOS supports it); otherwise e.g. 30s, 5m, 12h.
+KBD_TIMEOUT=12h
+EOF
+        sudo chmod 0644 "$conf"
+        info "created $conf (12h)"
+    else
+        info "keeping existing $conf"
+    fi
+
+    local rule=/etc/udev/rules.d/99-dell-kbd-backlight.rules
+    if [[ -f $rule ]] && grep -q 'kbd-backlight --apply' "$rule"; then
+        info "udev rule already present: $rule"
+    else
+        sudo tee "$rule" >/dev/null <<'EOF'
+# Reapply the Dell keyboard backlight timeout at boot and when the power
+# source changes (the timeout is stored separately for AC and battery).
+ACTION=="add", SUBSYSTEM=="leds", KERNEL=="dell::kbd_backlight", RUN+="/usr/local/bin/kbd-backlight --apply"
+ACTION=="change", SUBSYSTEM=="power_supply", ATTR{type}=="Mains", RUN+="/usr/local/bin/kbd-backlight --apply"
+EOF
+        sudo chmod 0644 "$rule"
+        info "created $rule"
+    fi
+
+    sudo udevadm control --reload-rules 2>/dev/null || true
+    sudo /usr/local/bin/kbd-backlight --apply
+    info "current timeout: $(cat "$led/stop_timeout")  (change with: kbd-backlight 30s|5m|12h)"
+}
+
 # --- X11 keyboard: custom xkb keymap (Mint/Cinnamon) ----------------------
 # Sway (Arch) loads this via the input `xkb_file` setting; X11 has no equivalent
 # persistent config, so we compile the keymap into the running server at every
@@ -518,7 +584,7 @@ step_done() {
     section "Done"
     cat <<EOF
 Install finished. Worth checking / doing manually:
-  • Reboot if shell, groups, or the GRUB backlight fix changed.
+  • Reboot if shell, groups, or a backlight fix changed.
   • ~/.emacs.d and ~/.config are restored as git repos — 'git status' in each to confirm.
   • Verify ssh: ssh -T git@github.com
   • Verify gh/git push: gh auth status  (then 'gh auth login' if not authenticated)

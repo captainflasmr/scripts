@@ -1,0 +1,142 @@
+#!/bin/bash
+# kbd-backlight — set a Dell keyboard backlight idle timeout.
+#
+#   kbd-backlight            show the current setting
+#   kbd-backlight 0          never turn off (only if the BIOS supports it)
+#   kbd-backlight 30         turn off after 30 seconds
+#   kbd-backlight 90s 2m 1h  or 1d
+#
+# The chosen value is remembered in /etc/kbd-backlight.conf and reapplied at
+# boot and when the power source changes (many Dell models keep separate AC
+# and battery timeouts).
+#
+# The BIOS only accepts certain values and may round or reject others. If 0 is
+# rejected, try the longest value the model accepts (often 12h).
+
+set -euo pipefail
+
+LED=/sys/class/leds/dell::kbd_backlight
+TIMEOUT=$LED/stop_timeout
+CONF=/etc/kbd-backlight.conf
+
+usage() {
+    cat <<'EOF'
+Usage: kbd-backlight [TIMEOUT]
+
+  TIMEOUT may be:
+    0, never     never turn off (only if the BIOS supports it)
+    30           turn off after 30 seconds (bare numbers are seconds)
+    90s, 5m, 2h  or 1d
+
+  With no argument, show the current timeout and brightness.
+
+The BIOS only accepts certain values and may round or reject others. If 0 is
+rejected, try the longest value the model accepts (often 12h).
+
+The setting is stored by the Dell BIOS and applies to the power source
+currently in use. It is reapplied automatically at boot and when switching
+between AC and battery.
+EOF
+}
+
+power_source() {
+    local f type
+    for f in /sys/class/power_supply/*/online; do
+        [ -r "$f" ] || continue
+        type=$(cat "${f%/online}/type" 2>/dev/null || true)
+        if [ "$type" = "Mains" ] && [ "$(cat "$f")" = "1" ]; then
+            printf 'AC'
+            return
+        fi
+    done
+    printf 'battery'
+}
+
+read_config() {
+    local value=12h
+    if [ -r "$CONF" ]; then
+        # shellcheck disable=SC1090
+        . "$CONF"
+        value=${KBD_TIMEOUT:-12h}
+    fi
+    printf '%s' "$value"
+}
+
+show_status() {
+    local src configured
+    src=$(power_source)
+    configured=$(read_config)
+    printf 'Power source: %s\n' "$src"
+    printf 'Idle timeout: %s\n' "$(cat "$TIMEOUT")"
+    printf 'Configured:   %s\n' "$configured"
+    printf 'Brightness:   %s/%s\n' "$(cat "$LED/brightness")" "$(cat "$LED/max_brightness")"
+    printf 'Triggers:     %s\n' "$(cat "$LED/start_triggers")"
+}
+
+apply_saved() {
+    local value current
+    [ -e "$TIMEOUT" ] || exit 0
+    current=$(cat "$TIMEOUT" 2>/dev/null || true)
+    # Don't override a "Never" timeout configured in the BIOS.
+    [ "$current" = "0s" ] && exit 0
+    value=$(read_config)
+    printf '%s\n' "$value" > "$TIMEOUT" 2>/dev/null || true
+}
+
+# Internal hook for the udev rule: reapply the saved value silently.
+if [ "${1:-}" = "--apply" ]; then
+    apply_saved
+    exit 0
+fi
+
+if [ $# -eq 0 ]; then
+    show_status
+    exit 0
+fi
+
+case "$1" in
+    -h|--help)
+        usage
+        exit 0
+        ;;
+esac
+
+[ -e "$TIMEOUT" ] || {
+    echo "kbd-backlight: $TIMEOUT not found (is this a Dell laptop?)" >&2
+    exit 1
+}
+
+value=$1
+case "$value" in
+    never|always-on|always) value=0 ;;
+esac
+
+if ! [[ "$value" =~ ^[0-9]+[smhd]?$ ]]; then
+    echo "kbd-backlight: invalid timeout '$1' (use e.g. 0, 30, 30s, 5m, 1h)" >&2
+    exit 2
+fi
+
+if [ "$(id -u)" -ne 0 ]; then
+    script=$(readlink -f -- "$0")
+    exec sudo -- "$script" "$value"
+fi
+
+printf '%s\n' "$value" > "$TIMEOUT" 2>/dev/null || {
+    echo "kbd-backlight: the BIOS rejected timeout '$value'." >&2
+    echo "This model only accepts certain values; try 30s, 5m, or 12h." >&2
+    exit 1
+}
+
+# Remember the value so boot/power-source changes apply it automatically.
+tmp=$(mktemp)
+printf '# Dell keyboard backlight idle timeout. Managed by kbd-backlight.\nKBD_TIMEOUT=%s\n' "$value" > "$tmp"
+install -m 0644 "$tmp" "$CONF"
+rm -f "$tmp"
+
+src=$(power_source)
+shown=$(cat "$TIMEOUT")
+if [ "$shown" = "0s" ]; then
+    printf 'Keyboard backlight timeout on %s: %s (always on)\n' "$src" "$shown"
+else
+    printf 'Keyboard backlight timeout on %s: %s\n' "$src" "$shown"
+fi
